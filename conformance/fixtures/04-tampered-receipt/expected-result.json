@@ -1,0 +1,1 @@
+{"crypto_valid":false,"is_trusted_signer":false,"note":"Tampered receipt payload must fail DSSE signature verification and self-digest check","receipt_digest_valid":false}

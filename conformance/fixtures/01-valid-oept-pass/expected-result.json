@@ -1,0 +1,1 @@
+{"checks":{"application_signature":"PASS","archive_safety":"PASS","manifest_structure":"PASS","member_digests":"PASS"},"overall_result":"TECHNICAL_CHECKS_PASSED","receipt_signature_trusted":true,"trusted_verifier_key_id":"test-verifier-2026"}

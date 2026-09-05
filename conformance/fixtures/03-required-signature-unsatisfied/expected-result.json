@@ -1,0 +1,1 @@
+{"checks":{"application_signature":"UNVERIFIED","archive_safety":"PASS","manifest_structure":"PASS","member_digests":"PASS"},"note":"Required check 'application_signature' was UNVERIFIED on unsigned package","overall_result":"PROFILE_UNSATISFIED"}
