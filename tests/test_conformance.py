@@ -52,6 +52,39 @@ def test_conformance_fixture_01_valid_oept_pass():
     assert inspection.trusted_signer_key_id == expected["trusted_verifier_key_id"]
 
 
+def test_conformance_fixture_01_raw_crypto_independent_verification():
+    """Anti-cheating test: verifies fixture 01 DSSE envelope and PAE using only raw stdlib and cryptography."""
+    import base64
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
+    fix_dir = FIXTURES_DIR / "01-valid-oept-pass"
+    with open(fix_dir / "receipt.dsse.json", "rb") as f:
+        env = json.loads(f.read())
+
+    ptype = env["payloadType"]
+    pbytes = base64.b64decode(env["payload"])
+    pae = (
+        b"DSSEv1 "
+        + str(len(ptype.encode("utf-8"))).encode("ascii")
+        + b" "
+        + ptype.encode("utf-8")
+        + b" "
+        + str(len(pbytes)).encode("ascii")
+        + b" "
+        + pbytes
+    )
+    sig_bytes = base64.b64decode(env["signatures"][0]["sig"])
+
+    with open(fix_dir / "verifier-trust-keys.json", "rb") as f:
+        vkeys = json.loads(f.read())
+    pem_bytes = vkeys[0]["public_key_pem"].encode("utf-8")
+    pub = load_pem_public_key(pem_bytes)
+    assert isinstance(pub, Ed25519PublicKey)
+    pub.verify(sig_bytes, pae)
+
+
 def test_conformance_fixture_02_tampered_package():
     fix_dir = FIXTURES_DIR / "02-tampered-package"
     package_bytes = (fix_dir / "package.zip").read_bytes()

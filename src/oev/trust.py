@@ -11,16 +11,19 @@ NON-NEGOTIABLE TRUST INVARIANTS:
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .canonical import safe_json_loads
 from .hashing import sha256_bytes
 from .signing import (
     load_ed25519_public_key,
     verify_dsse_signature_with_key,
 )
+
+MAX_TRUSTED_KEYS: int = 64
+MAX_KEYID_LENGTH: int = 256
 
 
 @dataclass(frozen=True)
@@ -33,7 +36,11 @@ class TrustedKey:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TrustedKey:
-        key_id = str(data["key_id"])
+        key_id = str(data["key_id"]).strip()
+        if not key_id:
+            raise ValueError("Trusted key 'key_id' cannot be empty")
+        if len(key_id) > MAX_KEYID_LENGTH:
+            raise ValueError(f"Trusted key 'key_id' exceeds maximum length ({MAX_KEYID_LENGTH})")
         pem = data["public_key_pem"]
         pem_bytes = pem.encode("utf-8") if isinstance(pem, str) else bytes(pem)
         # Validate that it is a valid Ed25519 public key
@@ -53,6 +60,8 @@ class TrustStore:
                 self.add_key(k)
 
     def add_key(self, key: TrustedKey) -> None:
+        if len(self._keys) >= MAX_TRUSTED_KEYS:
+            raise ValueError(f"TrustStore cannot exceed maximum of {MAX_TRUSTED_KEYS} keys")
         if key.key_id in self._key_ids:
             raise ValueError(f"Duplicate trusted key ID '{key.key_id}' in trust store")
         self._keys.append(key)
@@ -71,7 +80,8 @@ class TrustStore:
     @classmethod
     def from_file(cls, path: str | Path) -> TrustStore:
         with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            content = f.read()
+        data = safe_json_loads(content)
         if not isinstance(data, list):
             raise TypeError("Trust file must be a JSON array of key objects")
         keys = [TrustedKey.from_dict(entry) for entry in data]

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 from oev.adapters import get_adapter_for_format, get_adapter_for_package
+from oev.canonical import safe_json_loads
 from oev.dsse import parse_dsse_envelope
 from oev.hashing import sha256_bytes
 from oev.models import (
@@ -26,7 +26,8 @@ def _extract_receipt(source: str | Path | dict[str, Any]) -> VerificationReceipt
     """Load VerificationReceipt, unwrapping DSSE envelope if present."""
     if isinstance(source, (str, Path)):
         with open(source, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            content = f.read()
+        data = safe_json_loads(content)
     elif isinstance(source, dict):
         data = source
     else:
@@ -34,7 +35,7 @@ def _extract_receipt(source: str | Path | dict[str, Any]) -> VerificationReceipt
 
     if "payloadType" in data and "payload" in data and "signatures" in data:
         _, payload_bytes, _ = parse_dsse_envelope(data)
-        receipt_dict = json.loads(payload_bytes.decode("utf-8"))
+        receipt_dict = safe_json_loads(payload_bytes.decode("utf-8"))
     else:
         receipt_dict = data
 
@@ -184,6 +185,25 @@ def reverify_package(
                         "note": f"Status difference detected for {hist.check_id}",
                     }
                 )
+
+    # 4b. Check for required checks missing from historical receipt
+    hist_by_id = {c.check_id: c for c in receipt.checks}
+    for req_id in profile.required_checks:
+        if req_id not in hist_by_id:
+            fresh_c = fresh_by_id.get(req_id)
+            fresh_status_str = (
+                str(fresh_c.status.value if hasattr(fresh_c.status, "value") else fresh_c.status)
+                if fresh_c
+                else "NOT_EXECUTED"
+            )
+            differences.append(
+                {
+                    "check_id": req_id,
+                    "historical_status": "MISSING_FROM_RECEIPT",
+                    "fresh_status": fresh_status_str,
+                    "note": f"Required check '{req_id}' was absent from the historical receipt",
+                }
+            )
 
     reverification_result = "MATCH" if len(differences) == 0 else "MISMATCH"
 

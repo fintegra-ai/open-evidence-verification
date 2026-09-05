@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Any
 
-from oev.canonical import canonicalize_json
+from oev.canonical import canonicalize_json, safe_json_loads
 from oev.engine import execute_verification
 from oev.inspect import inspect_receipt_file
 from oev.models import OverallResult
@@ -44,7 +43,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
             sys.stderr.write(f"Error: package trust keys file not found: {tk_path}\n")
             return 1
         with open(tk_path, "r", encoding="utf-8") as f:
-            package_trust_keys = json.load(f)
+            package_trust_keys = safe_json_loads(f.read())
 
     private_key_pem: bytes | None = None
     if args.sign_receipt:
@@ -131,7 +130,7 @@ def cmd_reverify(args: argparse.Namespace) -> int:
             sys.stderr.write(f"Error: package trust keys file not found: {tk_path}\n")
             return 1
         with open(tk_path, "r", encoding="utf-8") as f:
-            package_trust_keys = json.load(f)
+            package_trust_keys = safe_json_loads(f.read())
 
     report = reverify_package(
         package_bytes=package_bytes,

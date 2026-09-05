@@ -10,11 +10,10 @@ A receipt must never hash itself including its own receipt_digest field.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
-from .canonical import canonicalize_json
+from .canonical import canonicalize_json, safe_json_loads
 from .hashing import sha256_bytes
 from .models import CheckResult, CheckStatus, Limitation, OverallResult, VerificationReceipt
 from .schemas import validate_document
@@ -91,9 +90,10 @@ def aggregate_overall_result(
         if status not in (CheckStatus.PASS, CheckStatus.NOT_APPLICABLE):
             optional_imperfect.append(opt_id)
 
-    has_limitations = bool(limitations and len(limitations) > 0)
+    material_limitations = [lim for lim in (limitations or []) if getattr(lim, "material", True)]
+    has_material_limitations = bool(len(material_limitations) > 0)
 
-    if optional_imperfect or has_limitations:
+    if optional_imperfect or has_material_limitations:
         return OverallResult.TECHNICAL_CHECKS_PARTIAL
 
     return OverallResult.TECHNICAL_CHECKS_PASSED
@@ -144,7 +144,8 @@ def load_receipt(source: str | Path | dict[str, Any]) -> VerificationReceipt:
     """Load and validate a VerificationReceipt from file path or dictionary."""
     if isinstance(source, (str, Path)):
         with open(source, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            content = f.read()
+        data = safe_json_loads(content)
     elif isinstance(source, dict):
         data = source
     else:

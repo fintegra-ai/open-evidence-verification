@@ -163,6 +163,10 @@
           "description": {
             "type": "string",
             "minLength": 1
+          },
+          "material": {
+            "type": "boolean",
+            "default": true
           }
         },
         "additionalProperties": false

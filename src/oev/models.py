@@ -87,13 +87,23 @@ class Limitation:
 
     code: str
     description: str
+    material: bool = True
 
     def to_dict(self) -> dict[str, Any]:
-        return {"code": self.code, "description": self.description}
+        d: dict[str, Any] = {"code": self.code, "description": self.description}
+        if not self.material:
+            d["material"] = False
+        else:
+            d["material"] = True
+        return d
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Limitation:
-        return cls(code=str(data["code"]), description=str(data["description"]))
+        return cls(
+            code=str(data["code"]),
+            description=str(data["description"]),
+            material=bool(data.get("material", True)),
+        )
 
 
 @dataclass(frozen=True)
@@ -228,13 +238,20 @@ class VerificationProfile:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> VerificationProfile:
+        req = [str(c) for c in data.get("required_checks", [])]
+        opt = [str(c) for c in data.get("optional_checks", [])]
+        overlap = set(req).intersection(set(opt))
+        if overlap:
+            raise ValueError(
+                f"Checks cannot be both required and optional in profile: {sorted(overlap)}"
+            )
         return cls(
             protocol_version=str(data.get("protocol_version", "oev-profile/0.1")),
             profile_id=str(data["profile_id"]),
             profile_version=str(data["profile_version"]),
             target_format=str(data["target_format"]),
-            required_checks=[str(c) for c in data.get("required_checks", [])],
-            optional_checks=[str(c) for c in data.get("optional_checks", [])],
+            required_checks=req,
+            optional_checks=opt,
             parameters=dict(data.get("parameters", {})),
             description=str(data.get("description", "")),
         )
@@ -287,6 +304,13 @@ class VerificationReceipt:
         overall = (
             OverallResult(res_val) if res_val in OverallResult._value2member_map_ else str(res_val)
         )
+        checks = [CheckResult.from_dict(c) for c in data.get("checks", [])]
+        seen_check_ids: set[str] = set()
+        for c in checks:
+            if c.check_id in seen_check_ids:
+                raise ValueError(f"Duplicate check_id in checks: {c.check_id!r}")
+            seen_check_ids.add(c.check_id)
+
         return cls(
             receipt_id=str(data["receipt_id"]),
             protocol_version=str(data.get("protocol_version", "oev-receipt/0.1")),
@@ -295,7 +319,7 @@ class VerificationReceipt:
             profile=ProfileReference.from_dict(data["profile"]),
             verifier=VerifierIdentity.from_dict(data["verifier"]),
             trust_inputs=[TrustInput.from_dict(t) for t in data.get("trust_inputs", [])],
-            checks=[CheckResult.from_dict(c) for c in data.get("checks", [])],
+            checks=checks,
             limitations=[Limitation.from_dict(l) for l in data.get("limitations", [])],
             overall_result=overall,
             superseded_receipt=dict(data["superseded_receipt"])

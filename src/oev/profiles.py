@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
-from .canonical import canonicalize_json
+from .canonical import canonicalize_json, safe_json_loads
 from .hashing import sha256_bytes
 from .models import VerificationProfile
 from .schemas import validate_document
@@ -25,7 +24,8 @@ def load_profile(source: str | Path | dict[str, Any]) -> VerificationProfile:
     """Load, validate, and instantiate a VerificationProfile from file path or dictionary."""
     if isinstance(source, (str, Path)):
         with open(source, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            content = f.read()
+        data = safe_json_loads(content)
     elif isinstance(source, dict):
         data = source
     else:

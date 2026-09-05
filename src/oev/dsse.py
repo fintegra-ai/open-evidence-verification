@@ -18,6 +18,10 @@ from typing import Any
 DEFAULT_PAYLOAD_TYPE = "application/vnd.oev.verification-receipt+json"
 
 
+MAX_DSSE_SIGNATURES: int = 32
+MAX_KEYID_LENGTH: int = 256
+
+
 class DsseError(ValueError):
     """Raised when a DSSE envelope is malformed or invalid."""
 
@@ -81,6 +85,11 @@ def parse_dsse_envelope(envelope: dict[str, Any]) -> tuple[str, bytes, list[dict
     if not isinstance(sigs, list) or len(sigs) == 0:
         raise DsseError("Envelope 'signatures' must be a non-empty array")
 
+    if len(sigs) > MAX_DSSE_SIGNATURES:
+        raise DsseError(
+            f"Envelope signatures count exceeds maximum allowed ({len(sigs)} > {MAX_DSSE_SIGNATURES})"
+        )
+
     parsed_sigs: list[dict[str, str]] = []
     for idx, sig_entry in enumerate(sigs):
         if not isinstance(sig_entry, dict):
@@ -89,8 +98,13 @@ def parse_dsse_envelope(envelope: dict[str, Any]) -> tuple[str, bytes, list[dict
         if not isinstance(sig_b64, str) or not sig_b64:
             raise DsseError(f"Signature entry #{idx} missing 'sig' base64 string")
         key_id = sig_entry.get("keyid")
-        if key_id is not None and not isinstance(key_id, str):
-            raise DsseError(f"Signature entry #{idx} 'keyid' must be a string or omitted")
+        if key_id is not None:
+            if not isinstance(key_id, str):
+                raise DsseError(f"Signature entry #{idx} 'keyid' must be a string or omitted")
+            if len(key_id) > MAX_KEYID_LENGTH:
+                raise DsseError(
+                    f"Signature entry #{idx} 'keyid' exceeds maximum length ({MAX_KEYID_LENGTH})"
+                )
 
         parsed_sigs.append(
             {

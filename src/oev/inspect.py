@@ -8,11 +8,11 @@ referenced package is valid or intact (package bytes are not present during insp
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from oev.canonical import safe_json_loads
 from oev.dsse import parse_dsse_envelope
 from oev.models import VerificationReceipt
 from oev.receipts import verify_receipt_digest
@@ -122,7 +122,7 @@ def inspect_receipt_data(
         if signatures:
             envelope_key_id = signatures[0].get("keyid") or None
 
-        receipt_dict = json.loads(payload_bytes.decode("utf-8"))
+        receipt_dict = safe_json_loads(payload_bytes.decode("utf-8"))
 
         if verifier_trust_store is not None:
             eval_result = evaluate_receipt_trust(data, verifier_trust_store)
@@ -164,5 +164,6 @@ def inspect_receipt_file(
 ) -> InspectionResult:
     """Load receipt file (JSON or DSSE) and run offline inspection."""
     with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+        content = f.read()
+    data = safe_json_loads(content)
     return inspect_receipt_data(data, verifier_trust_store=verifier_trust_store)
