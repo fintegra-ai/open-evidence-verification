@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/oev/schemas/reverification-report.schema.json",
+  "title": "OEVP Reverification Report",
+  "description": "Provisional specification for a package re-verification report (oev-reverification/0.1).",
+  "type": "object",
+  "required": [
+    "protocol_version",
+    "receipt_digest",
+    "package_digest_match",
+    "profile_digest_match",
+    "fresh_checks",
+    "check_differences",
+    "reverification_result"
+  ],
+  "properties": {
+    "protocol_version": {
+      "type": "string",
+      "enum": ["oev-reverification/0.1"]
+    },
+    "receipt_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "package_digest_match": {
+      "type": "boolean"
+    },
+    "profile_digest_match": {
+      "type": "boolean"
+    },
+    "fresh_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "category", "status"],
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL",
+              "NOT_RUN",
+              "NOT_APPLICABLE",
+              "UNVERIFIED",
+              "UNSUPPORTED"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "check_differences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "historical_status", "fresh_status"],
+        "properties": {
+          "check_id": {
+            "type": "string"
+          },
+          "historical_status": {
+            "type": "string"
+          },
+          "fresh_status": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "reverification_result": {
+      "type": "string",
+      "enum": ["MATCH", "MISMATCH", "CANNOT_REPRODUCE"]
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

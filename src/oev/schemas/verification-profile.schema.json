@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/oev/schemas/verification-profile.schema.json",
+  "title": "OEVP Verification Profile",
+  "description": "Provisional specification for a deterministic evidence verification profile (oev-profile/0.1).",
+  "type": "object",
+  "required": [
+    "protocol_version",
+    "profile_id",
+    "profile_version",
+    "target_format",
+    "required_checks"
+  ],
+  "properties": {
+    "protocol_version": {
+      "type": "string",
+      "enum": ["oev-profile/0.1"]
+    },
+    "profile_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profile_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_format": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "required_checks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "optional_checks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "parameters": {
+      "type": "object",
+      "default": {}
+    }
+  },
+  "additionalProperties": false
+}
