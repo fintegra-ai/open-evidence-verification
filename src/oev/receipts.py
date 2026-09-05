@@ -56,7 +56,9 @@ def aggregate_overall_result(
             required_unsatisfied.append(req_id)
             continue
 
-        status = check.status if isinstance(check.status, CheckStatus) else CheckStatus(check.status)
+        status = (
+            check.status if isinstance(check.status, CheckStatus) else CheckStatus(check.status)
+        )
         if status == CheckStatus.FAIL:
             required_fails.append(req_id)
         elif status in (
@@ -83,7 +85,9 @@ def aggregate_overall_result(
         if check is None:
             optional_imperfect.append(opt_id)
             continue
-        status = check.status if isinstance(check.status, CheckStatus) else CheckStatus(check.status)
+        status = (
+            check.status if isinstance(check.status, CheckStatus) else CheckStatus(check.status)
+        )
         if status not in (CheckStatus.PASS, CheckStatus.NOT_APPLICABLE):
             optional_imperfect.append(opt_id)
 
@@ -97,7 +101,11 @@ def aggregate_overall_result(
 
 def compute_receipt_digest(receipt: dict[str, Any] | VerificationReceipt) -> str:
     """Compute deterministic SHA-256 digest over JCS-canonicalized receipt body WITHOUT receipt_digest."""
-    d = receipt.to_dict(include_digest=False) if isinstance(receipt, VerificationReceipt) else dict(receipt)
+    d = (
+        receipt.to_dict(include_digest=False)
+        if isinstance(receipt, VerificationReceipt)
+        else dict(receipt)
+    )
     # Ensure receipt_digest is omitted from unsigned body
     d.pop("receipt_digest", None)
     canonical_bytes = canonicalize_json(d)
@@ -106,7 +114,11 @@ def compute_receipt_digest(receipt: dict[str, Any] | VerificationReceipt) -> str
 
 def finalize_receipt(receipt: dict[str, Any] | VerificationReceipt) -> VerificationReceipt:
     """Compute and attach receipt_digest, validate against schema, and return VerificationReceipt."""
-    d = receipt.to_dict(include_digest=False) if isinstance(receipt, VerificationReceipt) else dict(receipt)
+    d = (
+        receipt.to_dict(include_digest=False)
+        if isinstance(receipt, VerificationReceipt)
+        else dict(receipt)
+    )
     digest = compute_receipt_digest(d)
     d["receipt_digest"] = digest
     validate_document(d, RECEIPT_SCHEMA_NAME)
@@ -118,7 +130,11 @@ def verify_receipt_digest(receipt: dict[str, Any] | VerificationReceipt) -> tupl
 
     Returns (is_valid, declared_digest, recomputed_digest).
     """
-    d = receipt.to_dict(include_digest=True) if isinstance(receipt, VerificationReceipt) else dict(receipt)
+    d = (
+        receipt.to_dict(include_digest=True)
+        if isinstance(receipt, VerificationReceipt)
+        else dict(receipt)
+    )
     declared = str(d.get("receipt_digest", ""))
     recomputed = compute_receipt_digest(d)
     return (declared == recomputed, declared, recomputed)

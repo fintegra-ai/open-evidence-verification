@@ -38,6 +38,7 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.6.0",
     "build>=1.0.0",
+    "types-jsonschema>=4.20.0",
 ]
 
 [project.scripts]
@@ -52,6 +53,15 @@ python_version = "3.10"
 strict = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["jcs", "oept", "oept.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = true
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

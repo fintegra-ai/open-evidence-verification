@@ -92,9 +92,11 @@ def parse_dsse_envelope(envelope: dict[str, Any]) -> tuple[str, bytes, list[dict
         if key_id is not None and not isinstance(key_id, str):
             raise DsseError(f"Signature entry #{idx} 'keyid' must be a string or omitted")
 
-        parsed_sigs.append({
-            "sig": sig_b64,
-            "keyid": key_id or "",
-        })
+        parsed_sigs.append(
+            {
+                "sig": sig_b64,
+                "keyid": key_id or "",
+            }
+        )
 
     return (payload_type, payload_bytes, parsed_sigs)

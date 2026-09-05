@@ -11,6 +11,7 @@ Integers outside this range are rejected prior to canonicalization.
 from __future__ import annotations
 
 from typing import Any
+
 import jcs
 
 # IEEE 754 safe integer range for exact representation in JSON / ECMAScript
@@ -36,7 +37,9 @@ def check_integer_safety(obj: Any) -> None:
     if isinstance(obj, dict):
         for key, value in obj.items():
             if not isinstance(key, str):
-                raise CanonicalizationError(f"JSON object key must be string, got {type(key).__name__}")
+                raise CanonicalizationError(
+                    f"JSON object key must be string, got {type(key).__name__}"
+                )
             check_integer_safety(value)
         return
     if isinstance(obj, (list, tuple)):

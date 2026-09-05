@@ -1,12 +1,12 @@
 import pytest
+
 from oev.canonical import (
-    CanonicalizationError,
     MAX_SAFE_INTEGER,
     MIN_SAFE_INTEGER,
+    CanonicalizationError,
     canonicalize_json,
-    check_integer_safety,
 )
-from oev.hashing import is_valid_digest, sha256_bytes
+from oev.hashing import is_valid_digest
 from oev.models import (
     CheckResult,
     CheckStatus,
@@ -15,14 +15,12 @@ from oev.models import (
     PackageReference,
     ProfileReference,
     TrustInput,
-    VerificationProfile,
     VerificationReceipt,
     VerifierIdentity,
 )
 from oev.profiles import compute_profile_digest, load_profile
 from oev.receipts import (
     aggregate_overall_result,
-    compute_receipt_digest,
     finalize_receipt,
     verify_receipt_digest,
 )
@@ -34,7 +32,10 @@ def test_jcs_integer_boundary_safety():
     assert canonicalize_json({"safe": 0}) == b'{"safe":0}'
     assert canonicalize_json({"max": MAX_SAFE_INTEGER}) == f'{{"max":{MAX_SAFE_INTEGER}}}'.encode()
     assert canonicalize_json({"min": MIN_SAFE_INTEGER}) == f'{{"min":{MIN_SAFE_INTEGER}}}'.encode()
-    assert canonicalize_json({"bool_true": True, "bool_false": False}) == b'{"bool_false":false,"bool_true":true}'
+    assert (
+        canonicalize_json({"bool_true": True, "bool_false": False})
+        == b'{"bool_false":false,"bool_true":true}'
+    )
 
     # Unsafe large integers must be rejected
     with pytest.raises(CanonicalizationError, match="outside safe JCS range"):
@@ -113,9 +114,7 @@ def test_receipt_digest_recursion_rule():
             profile_id="p1", profile_version="0.1", profile_digest="sha256:" + "b" * 64
         ),
         verifier=VerifierIdentity(software="oev-test", version="0.1.0"),
-        trust_inputs=[
-            TrustInput(trust_id="k1", type="public_key", digest="sha256:" + "c" * 64)
-        ],
+        trust_inputs=[TrustInput(trust_id="k1", type="public_key", digest="sha256:" + "c" * 64)],
         checks=[
             CheckResult(check_id="archive_safety", category="safety", status=CheckStatus.PASS),
             CheckResult(check_id="member_digests", category="integrity", status=CheckStatus.PASS),
@@ -181,7 +180,9 @@ def test_overall_result_aggregation_contract():
         checks=[
             CheckResult(check_id="archive_safety", category="safety", status=CheckStatus.PASS),
             CheckResult(check_id="member_digests", category="integrity", status=CheckStatus.PASS),
-            CheckResult(check_id="application_signature", category="sig", status=CheckStatus.UNVERIFIED),
+            CheckResult(
+                check_id="application_signature", category="sig", status=CheckStatus.UNVERIFIED
+            ),
         ],
     )
     assert res == OverallResult.PROFILE_UNSATISFIED
@@ -193,7 +194,9 @@ def test_overall_result_aggregation_contract():
         checks=[
             CheckResult(check_id="archive_safety", category="safety", status=CheckStatus.PASS),
             CheckResult(check_id="member_digests", category="integrity", status=CheckStatus.PASS),
-            CheckResult(check_id="application_signature", category="sig", status=CheckStatus.NOT_RUN),
+            CheckResult(
+                check_id="application_signature", category="sig", status=CheckStatus.NOT_RUN
+            ),
         ],
     )
     assert res == OverallResult.PROFILE_UNSATISFIED
@@ -218,7 +221,9 @@ def test_overall_result_aggregation_contract():
             CheckResult(check_id="archive_safety", category="safety", status=CheckStatus.PASS),
             CheckResult(check_id="member_digests", category="integrity", status=CheckStatus.PASS),
         ],
-        limitations=[Limitation(code="UNCHECKED_ZIP_COMMENT", description="ZIP comment was not analyzed")],
+        limitations=[
+            Limitation(code="UNCHECKED_ZIP_COMMENT", description="ZIP comment was not analyzed")
+        ],
     )
     assert res == OverallResult.TECHNICAL_CHECKS_PARTIAL
 

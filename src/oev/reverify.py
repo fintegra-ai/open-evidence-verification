@@ -10,7 +10,6 @@ from oev.adapters import get_adapter_for_format, get_adapter_for_package
 from oev.dsse import parse_dsse_envelope
 from oev.hashing import sha256_bytes
 from oev.models import (
-    CheckResult,
     ReverificationReport,
     TrustInput,
     VerificationProfile,
@@ -58,11 +57,11 @@ def reverify_package(
     5. Diff fresh check statuses against historic receipt checks.
     """
     receipt = _extract_receipt(receipt_source)
-    is_digest_valid, declared_digest, _ = verify_receipt_digest(receipt)
+    is_digest_valid, _declared_digest, _ = verify_receipt_digest(receipt)
 
     # 1. Package digest check
     actual_package_digest = sha256_bytes(package_bytes)
-    package_digest_match = (actual_package_digest == receipt.package.digest)
+    package_digest_match = actual_package_digest == receipt.package.digest
 
     notes: list[str] = []
     if not is_digest_valid:
@@ -87,9 +86,13 @@ def reverify_package(
         return report
 
     # 2. Profile digest check
-    profile = profile_source if isinstance(profile_source, VerificationProfile) else load_profile(profile_source)
+    profile = (
+        profile_source
+        if isinstance(profile_source, VerificationProfile)
+        else load_profile(profile_source)
+    )
     actual_profile_digest = compute_profile_digest(profile)
-    profile_digest_match = (actual_profile_digest == receipt.profile.profile_digest)
+    profile_digest_match = actual_profile_digest == receipt.profile.profile_digest
 
     if not profile_digest_match:
         notes.append(
@@ -133,7 +136,11 @@ def reverify_package(
         TrustInput(
             trust_id=str(k["key_id"]),
             type="public_key",
-            digest=sha256_bytes(k["public_key_pem"].encode() if isinstance(k["public_key_pem"], str) else bytes(k["public_key_pem"])),
+            digest=sha256_bytes(
+                k["public_key_pem"].encode()
+                if isinstance(k["public_key_pem"], str)
+                else bytes(k["public_key_pem"])
+            ),
             note=k.get("note"),
         )
         for k in (package_trust_keys or [])
@@ -153,22 +160,30 @@ def reverify_package(
     for hist in receipt.checks:
         fresh = fresh_by_id.get(hist.check_id)
         if fresh is None:
-            differences.append({
-                "check_id": hist.check_id,
-                "historical_status": str(hist.status.value if hasattr(hist.status, "value") else hist.status),
-                "fresh_status": "NOT_EXECUTED",
-                "note": "Check was recorded in historical receipt but not evaluated in fresh run",
-            })
+            differences.append(
+                {
+                    "check_id": hist.check_id,
+                    "historical_status": str(
+                        hist.status.value if hasattr(hist.status, "value") else hist.status
+                    ),
+                    "fresh_status": "NOT_EXECUTED",
+                    "note": "Check was recorded in historical receipt but not evaluated in fresh run",
+                }
+            )
         else:
             hist_status = str(hist.status.value if hasattr(hist.status, "value") else hist.status)
-            fresh_status = str(fresh.status.value if hasattr(fresh.status, "value") else fresh.status)
+            fresh_status = str(
+                fresh.status.value if hasattr(fresh.status, "value") else fresh.status
+            )
             if hist_status != fresh_status:
-                differences.append({
-                    "check_id": hist.check_id,
-                    "historical_status": hist_status,
-                    "fresh_status": fresh_status,
-                    "note": f"Status difference detected for {hist.check_id}",
-                })
+                differences.append(
+                    {
+                        "check_id": hist.check_id,
+                        "historical_status": hist_status,
+                        "fresh_status": fresh_status,
+                        "note": f"Status difference detected for {hist.check_id}",
+                    }
+                )
 
     reverification_result = "MATCH" if len(differences) == 0 else "MISMATCH"
 

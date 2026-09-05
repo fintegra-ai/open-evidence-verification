@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from oev.adapters.base import OptionalDependencyMissingError, PackageAdapter
 from oev.adapters.oept import OEPTAdapter, is_oept_available

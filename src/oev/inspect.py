@@ -15,7 +15,7 @@ from typing import Any
 
 from oev.dsse import parse_dsse_envelope
 from oev.models import VerificationReceipt
-from oev.receipts import load_receipt, verify_receipt_digest
+from oev.receipts import verify_receipt_digest
 from oev.schemas import validate_document
 from oev.trust import TrustStore, evaluate_receipt_trust
 
@@ -68,17 +68,21 @@ class InspectionResult:
             f"DSSE Envelope Signed:   {'YES' if self.is_dsse_signed else 'NO'}",
         ]
         if self.is_dsse_signed:
-            lines.extend([
-                f"Signature Math Valid:   {'YES' if self.crypto_valid else 'NO'}",
-                f"Caller Trusted Signer:  {'YES' if self.is_trusted_signer else 'NO'}",
-                f"Trusted Signer Key ID:  {self.trusted_signer_key_id or 'None'}",
-                f"Envelope Key ID Hint:   {self.envelope_key_id or 'None'}",
-            ])
+            lines.extend(
+                [
+                    f"Signature Math Valid:   {'YES' if self.crypto_valid else 'NO'}",
+                    f"Caller Trusted Signer:  {'YES' if self.is_trusted_signer else 'NO'}",
+                    f"Trusted Signer Key ID:  {self.trusted_signer_key_id or 'None'}",
+                    f"Envelope Key ID Hint:   {self.envelope_key_id or 'None'}",
+                ]
+            )
 
-        lines.extend([
-            "-" * 70,
-            f"Check Vector ({len(self.receipt.checks)} checks):",
-        ])
+        lines.extend(
+            [
+                "-" * 70,
+                f"Check Vector ({len(self.receipt.checks)} checks):",
+            ]
+        )
         for c in self.receipt.checks:
             lines.append(f"  [{c.status:<14}] {c.check_id:<25} ({c.category}) {c.detail}")
 
@@ -87,14 +91,16 @@ class InspectionResult:
             for lim in self.receipt.limitations:
                 lines.append(f"  * [{lim.code}] {lim.description}")
 
-        lines.extend([
-            "=" * 70,
-            "NOTICE:",
-            "Technical verification only — not a legal, compliance, or factual conclusion.",
-            "Receipt inspection describes a verifier's recorded technical appraisal.",
-            "It does not independently verify the referenced package.",
-            "=" * 70,
-        ])
+        lines.extend(
+            [
+                "=" * 70,
+                "NOTICE:",
+                "Technical verification only — not a legal, compliance, or factual conclusion.",
+                "Receipt inspection describes a verifier's recorded technical appraisal.",
+                "It does not independently verify the referenced package.",
+                "=" * 70,
+            ]
+        )
         return "\n".join(lines)
 
 
@@ -129,7 +135,7 @@ def inspect_receipt_data(
     validate_document(receipt_dict, RECEIPT_SCHEMA_NAME)
     receipt = VerificationReceipt.from_dict(receipt_dict)
 
-    digest_valid, declared_digest, recomputed_digest = verify_receipt_digest(receipt_dict)
+    digest_valid, _declared_digest, recomputed_digest = verify_receipt_digest(receipt_dict)
 
     summary = (
         f"Overall: {receipt.overall_result} | "

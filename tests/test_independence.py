@@ -29,10 +29,9 @@ def test_core_imports_independence():
                     for forbidden in FORBIDDEN_MODULE_PREFIXES:
                         if alias.name == forbidden or alias.name.startswith(f"{forbidden}."):
                             violations.append((py_file.name, node.lineno, alias.name))
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    for forbidden in FORBIDDEN_MODULE_PREFIXES:
-                        if node.module == forbidden or node.module.startswith(f"{forbidden}."):
-                            violations.append((py_file.name, node.lineno, node.module))
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                for forbidden in FORBIDDEN_MODULE_PREFIXES:
+                    if node.module == forbidden or node.module.startswith(f"{forbidden}."):
+                        violations.append((py_file.name, node.lineno, node.module))
 
     assert not violations, f"Forbidden imports detected in protocol core: {violations}"

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+
 import pytest
 
 from oev.cli import main
@@ -31,7 +32,9 @@ def sample_profile_file(tmp_path: Path) -> Path:
     return p_path
 
 
-def test_cli_verify_inspect_and_reverify_roundtrip(tmp_path: Path, sample_profile_file: Path, capsys: pytest.CaptureFixture):
+def test_cli_verify_inspect_and_reverify_roundtrip(
+    tmp_path: Path, sample_profile_file: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     bundle_path = OEPT_FIXTURES / "02-valid-signed" / "bundle.zip"
     trust_keys_path = OEPT_FIXTURES / "02-valid-signed" / "trust-keys.json"
     receipt_out = tmp_path / "receipt.dsse.json"
@@ -48,52 +51,73 @@ def test_cli_verify_inspect_and_reverify_roundtrip(tmp_path: Path, sample_profil
     )
 
     # 1. oev verify
-    ret = main([
-        "verify",
-        str(bundle_path),
-        "--profile", str(sample_profile_file),
-        "--trust-keys", str(trust_keys_path),
-        "--sign-receipt", str(v_priv_file),
-        "--signer-key-id", "auditor-01",
-        "--out", str(receipt_out),
-    ])
+    ret = main(
+        [
+            "verify",
+            str(bundle_path),
+            "--profile",
+            str(sample_profile_file),
+            "--trust-keys",
+            str(trust_keys_path),
+            "--sign-receipt",
+            str(v_priv_file),
+            "--signer-key-id",
+            "auditor-01",
+            "--out",
+            str(receipt_out),
+        ]
+    )
     assert ret == 0
     assert receipt_out.is_file()
 
     # 2. oev inspect-receipt
-    ret_inspect = main([
-        "inspect-receipt",
-        str(receipt_out),
-        "--verifier-keys", str(verifier_keys_file),
-    ])
+    ret_inspect = main(
+        [
+            "inspect-receipt",
+            str(receipt_out),
+            "--verifier-keys",
+            str(verifier_keys_file),
+        ]
+    )
     assert ret_inspect == 0
     out_inspect = capsys.readouterr().out
     assert "Receipt inspection describes a verifier's recorded technical appraisal." in out_inspect
-    assert "Technical verification only — not a legal, compliance, or factual conclusion." in out_inspect
+    assert (
+        "Technical verification only — not a legal, compliance, or factual conclusion."
+        in out_inspect
+    )
     assert "Caller Trusted Signer:  YES" in out_inspect
 
     # 3. oev receipt verify
-    ret_rcpt_verify = main([
-        "receipt", "verify",
-        str(receipt_out),
-        "--verifier-keys", str(verifier_keys_file),
-    ])
+    ret_rcpt_verify = main(
+        [
+            "receipt",
+            "verify",
+            str(receipt_out),
+            "--verifier-keys",
+            str(verifier_keys_file),
+        ]
+    )
     assert ret_rcpt_verify == 0
 
     # 4. oev reverify (success match)
-    ret_reverify = main([
-        "reverify",
-        str(bundle_path),
-        str(receipt_out),
-        "--profile", str(sample_profile_file),
-        "--trust-keys", str(trust_keys_path),
-    ])
+    ret_reverify = main(
+        [
+            "reverify",
+            str(bundle_path),
+            str(receipt_out),
+            "--profile",
+            str(sample_profile_file),
+            "--trust-keys",
+            str(trust_keys_path),
+        ]
+    )
     assert ret_reverify == 0
     out_reverify = capsys.readouterr().out
     assert "Re-verification Result:  MATCH" in out_reverify
 
 
-def test_reverify_package_mismatch(tmp_path: Path, sample_profile_file: Path):
+def test_reverify_package_mismatch(tmp_path: Path, sample_profile_file: Path) -> None:
     bundle_a = OEPT_FIXTURES / "02-valid-signed" / "bundle.zip"
     bundle_b = OEPT_FIXTURES / "01-valid-unsigned" / "bundle.zip"
     trust_keys = OEPT_FIXTURES / "02-valid-signed" / "trust-keys.json"
@@ -120,7 +144,7 @@ def test_reverify_package_mismatch(tmp_path: Path, sample_profile_file: Path):
     assert any("Package digest mismatch" in n for n in report.notes)
 
 
-def test_reverify_profile_digest_substitution(tmp_path: Path, sample_profile_file: Path):
+def test_reverify_profile_digest_substitution(tmp_path: Path, sample_profile_file: Path) -> None:
     bundle = OEPT_FIXTURES / "02-valid-signed" / "bundle.zip"
     trust_keys = OEPT_FIXTURES / "02-valid-signed" / "trust-keys.json"
     with open(trust_keys) as f:

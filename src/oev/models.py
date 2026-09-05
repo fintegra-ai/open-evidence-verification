@@ -57,7 +57,9 @@ class CheckResult:
         d: dict[str, Any] = {
             "check_id": self.check_id,
             "category": self.category,
-            "status": str(self.status.value if isinstance(self.status, CheckStatus) else self.status),
+            "status": str(
+                self.status.value if isinstance(self.status, CheckStatus) else self.status
+            ),
         }
         if self.detail:
             d["detail"] = self.detail
@@ -71,7 +73,9 @@ class CheckResult:
         return cls(
             check_id=str(data["check_id"]),
             category=str(data["category"]),
-            status=CheckStatus(status_val) if status_val in CheckStatus._value2member_map_ else str(status_val),
+            status=CheckStatus(status_val)
+            if status_val in CheckStatus._value2member_map_
+            else str(status_val),
             detail=str(data.get("detail", "")),
             duration_ms=int(data.get("duration_ms", 0)),
         )
@@ -280,7 +284,9 @@ class VerificationReceipt:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> VerificationReceipt:
         res_val = data["overall_result"]
-        overall = OverallResult(res_val) if res_val in OverallResult._value2member_map_ else str(res_val)
+        overall = (
+            OverallResult(res_val) if res_val in OverallResult._value2member_map_ else str(res_val)
+        )
         return cls(
             receipt_id=str(data["receipt_id"]),
             protocol_version=str(data.get("protocol_version", "oev-receipt/0.1")),
@@ -292,7 +298,9 @@ class VerificationReceipt:
             checks=[CheckResult.from_dict(c) for c in data.get("checks", [])],
             limitations=[Limitation.from_dict(l) for l in data.get("limitations", [])],
             overall_result=overall,
-            superseded_receipt=dict(data["superseded_receipt"]) if data.get("superseded_receipt") else None,
+            superseded_receipt=dict(data["superseded_receipt"])
+            if data.get("superseded_receipt")
+            else None,
             receipt_digest=str(data.get("receipt_digest", "")),
         )
 

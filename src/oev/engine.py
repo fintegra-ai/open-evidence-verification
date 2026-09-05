@@ -83,7 +83,9 @@ def execute_verification(
     if adapter is None:
         adapter = get_adapter_for_format(profile.target_format)
 
-    if adapter is None or (adapter.format_id != profile.target_format and not adapter.can_handle(package_bytes)):
+    if adapter is None or (
+        adapter.format_id != profile.target_format and not adapter.can_handle(package_bytes)
+    ):
         # Package format unsupported or incompatible with requested profile
         pkg_ref = PackageReference(
             digest=package_digest,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+
 import jsonschema
 
 # Locations: try package data first, fallback to repository root
@@ -24,7 +25,9 @@ def get_schema_path(schema_name: str) -> Path:
     repo_path = _REPO_SCHEMAS_DIR / schema_name
     if repo_path.is_file():
         return repo_path
-    raise FileNotFoundError(f"Schema {schema_name} not found in {_PKG_SCHEMAS_DIR} or {_REPO_SCHEMAS_DIR}")
+    raise FileNotFoundError(
+        f"Schema {schema_name} not found in {_PKG_SCHEMAS_DIR} or {_REPO_SCHEMAS_DIR}"
+    )
 
 
 def load_schema(schema_name: str) -> dict[str, Any]:
@@ -42,7 +45,9 @@ def validate_document(document: dict[str, Any], schema_name: str) -> None:
         validator = validator_cls(schema)
         errors = list(validator.iter_errors(document))
         if errors:
-            error_msgs = "; ".join(f"{e.jsonpath}: {e.message}" for e in errors[:5])
+            error_msgs = "; ".join(
+                f"{'/'.join(str(p) for p in e.path)}: {e.message}" for e in errors[:5]
+            )
             raise SchemaValidationError(f"Schema validation failed for {schema_name}: {error_msgs}")
     except SchemaValidationError:
         raise

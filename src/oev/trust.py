@@ -73,7 +73,7 @@ class TrustStore:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         if not isinstance(data, list):
-            raise ValueError("Trust file must be a JSON array of key objects")
+            raise TypeError("Trust file must be a JSON array of key objects")
         keys = [TrustedKey.from_dict(entry) for entry in data]
         return cls(keys)
 

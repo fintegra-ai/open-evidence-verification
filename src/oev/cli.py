@@ -16,9 +16,7 @@ from oev.profiles import load_profile
 from oev.reverify import reverify_package
 from oev.trust import TrustStore
 
-NOTICE_FOOTER = (
-    "Technical verification only — not a legal, compliance, or factual conclusion."
-)
+NOTICE_FOOTER = "Technical verification only — not a legal, compliance, or factual conclusion."
 INSPECTION_FOOTER = (
     "Receipt inspection describes a verifier's recorded technical appraisal.\n"
     "It does not independently verify the referenced package."
@@ -74,7 +72,11 @@ def cmd_verify(args: argparse.Namespace) -> int:
     else:
         print(out_json)
 
-    res_val = receipt.overall_result.value if hasattr(receipt.overall_result, "value") else str(receipt.overall_result)
+    res_val = (
+        receipt.overall_result.value
+        if hasattr(receipt.overall_result, "value")
+        else str(receipt.overall_result)
+    )
     print(f"\nOverall Result: {res_val}")
     print(f"{NOTICE_FOOTER}")
     return 0 if res_val == OverallResult.TECHNICAL_CHECKS_PASSED.value else 2
@@ -152,7 +154,9 @@ def cmd_reverify(args: argparse.Namespace) -> int:
             print("-" * 70)
             print(f"Check Differences ({len(report.check_differences)}):")
             for diff in report.check_differences:
-                print(f"  * {diff['check_id']}: Historical={diff['historical_status']}, Fresh={diff['fresh_status']}")
+                print(
+                    f"  * {diff['check_id']}: Historical={diff['historical_status']}, Fresh={diff['fresh_status']}"
+                )
         if report.notes:
             print("-" * 70)
             print("Notes:")
@@ -197,7 +201,9 @@ def cmd_receipt_verify(args: argparse.Namespace) -> int:
         print("OEVP RECEIPT SIGNATURE VERIFICATION")
         print("=" * 70)
         print(f"Receipt ID:             {result.receipt.receipt_id}")
-        print(f"Receipt Self-Digest:    {result.receipt.receipt_digest} ({'VALID' if result.receipt_digest_valid else 'INVALID'})")
+        print(
+            f"Receipt Self-Digest:    {result.receipt.receipt_digest} ({'VALID' if result.receipt_digest_valid else 'INVALID'})"
+        )
         print(f"DSSE Envelope Signed:   {'YES' if result.is_dsse_signed else 'NO'}")
         print(f"Signature Crypto Valid: {'YES' if result.crypto_valid else 'NO'}")
         print(f"Signer Trusted:         {'YES' if result.is_trusted_signer else 'NO'}")
@@ -221,7 +227,9 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
     # 1. verify
-    p_verify = subparsers.add_parser("verify", help="Verify package against profile and emit receipt")
+    p_verify = subparsers.add_parser(
+        "verify", help="Verify package against profile and emit receipt"
+    )
     p_verify.add_argument("package", help="Path to evidence package")
     p_verify.add_argument("--profile", required=True, help="Path to verification profile JSON")
     p_verify.add_argument("--trust-keys", help="Path to package trust roots JSON")
@@ -231,14 +239,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify.set_defaults(func=cmd_verify)
 
     # 2. inspect-receipt
-    p_inspect = subparsers.add_parser("inspect-receipt", help="Offline inspect receipt without package")
+    p_inspect = subparsers.add_parser(
+        "inspect-receipt", help="Offline inspect receipt without package"
+    )
     p_inspect.add_argument("receipt", help="Path to receipt JSON or DSSE envelope")
     p_inspect.add_argument("--verifier-keys", help="Path to trusted verifier keys JSON")
     p_inspect.add_argument("--json", action="store_true", help="Emit raw JSON")
     p_inspect.set_defaults(func=cmd_inspect_receipt)
 
     # 3. reverify
-    p_reverify = subparsers.add_parser("reverify", help="Independently re-verify package against historic receipt")
+    p_reverify = subparsers.add_parser(
+        "reverify", help="Independently re-verify package against historic receipt"
+    )
     p_reverify.add_argument("package", help="Path to evidence package")
     p_reverify.add_argument("receipt", help="Path to historical receipt JSON or DSSE envelope")
     p_reverify.add_argument("--profile", required=True, help="Path to verification profile JSON")
@@ -251,7 +263,9 @@ def build_parser() -> argparse.ArgumentParser:
     receipt_sub = p_receipt.add_subparsers(dest="receipt_subcommand", required=True)
     p_receipt_verify = receipt_sub.add_parser("verify", help="Verify receipt signature and trust")
     p_receipt_verify.add_argument("receipt", help="Path to receipt JSON or DSSE envelope")
-    p_receipt_verify.add_argument("--verifier-keys", required=True, help="Path to trusted verifier keys JSON")
+    p_receipt_verify.add_argument(
+        "--verifier-keys", required=True, help="Path to trusted verifier keys JSON"
+    )
     p_receipt_verify.add_argument("--json", action="store_true", help="Emit raw JSON")
     p_receipt_verify.set_defaults(func=cmd_receipt_verify)
 

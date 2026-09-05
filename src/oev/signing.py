@@ -23,7 +23,6 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from .canonical import canonicalize_json
 from .dsse import (
     DEFAULT_PAYLOAD_TYPE,
-    DsseError,
     build_dsse_envelope,
     compute_pae,
     parse_dsse_envelope,
@@ -51,7 +50,7 @@ def load_ed25519_private_key(pem_bytes: bytes) -> Ed25519PrivateKey:
     try:
         key = serialization.load_pem_private_key(pem_bytes, password=None)
         if not isinstance(key, Ed25519PrivateKey):
-            raise ValueError(f"Key is not Ed25519, got {type(key).__name__}")
+            raise TypeError(f"Key is not Ed25519, got {type(key).__name__}")
         return key
     except Exception as exc:
         raise ValueError(f"Failed to load Ed25519 private key: {exc}") from exc
@@ -62,7 +61,7 @@ def load_ed25519_public_key(pem_bytes: bytes) -> Ed25519PublicKey:
     try:
         key = serialization.load_pem_public_key(pem_bytes)
         if not isinstance(key, Ed25519PublicKey):
-            raise ValueError(f"Key is not Ed25519, got {type(key).__name__}")
+            raise TypeError(f"Key is not Ed25519, got {type(key).__name__}")
         return key
     except Exception as exc:
         raise ValueError(f"Failed to load Ed25519 public key: {exc}") from exc
@@ -75,7 +74,11 @@ def sign_receipt_dsse(
     payload_type: str = DEFAULT_PAYLOAD_TYPE,
 ) -> dict[str, Any]:
     """Canonicalize receipt, compute DSSE PAE, sign with Ed25519, and return DSSE envelope."""
-    receipt_dict = receipt.to_dict(include_digest=True) if isinstance(receipt, VerificationReceipt) else dict(receipt)
+    receipt_dict = (
+        receipt.to_dict(include_digest=True)
+        if isinstance(receipt, VerificationReceipt)
+        else dict(receipt)
+    )
     payload_bytes = canonicalize_json(receipt_dict)
 
     private_key = load_ed25519_private_key(private_key_pem)

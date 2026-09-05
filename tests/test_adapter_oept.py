@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
+
 import pytest
 
-from oev.adapters.oept import OEPTAdapter, is_oept_available
+from oev.adapters.oept import is_oept_available
 from oev.engine import execute_verification
 from oev.models import CheckStatus, OverallResult, VerificationProfile
 from oev.signing import generate_ed25519_keypair
@@ -52,9 +53,9 @@ def test_oept_adapter_valid_signed_passes():
 
     # Verify DSSE envelope
     assert envelope is not None
-    verifier_trust_store = TrustStore.from_list([
-        {"key_id": "verifier-test", "public_key_pem": verifier_pub.decode("utf-8")}
-    ])
+    verifier_trust_store = TrustStore.from_list(
+        [{"key_id": "verifier-test", "public_key_pem": verifier_pub.decode("utf-8")}]
+    )
     trust_eval = evaluate_receipt_trust(envelope, verifier_trust_store)
     assert trust_eval.is_trusted is True
     assert trust_eval.trusted_key_id == "verifier-test"

@@ -23,22 +23,18 @@ class PackageAdapter(ABC):
     @abstractmethod
     def format_id(self) -> str:
         """Supported package format identifier (e.g. 'oept-bundle/0.1')."""
-        pass
 
     @abstractmethod
     def can_handle(self, package_bytes: bytes) -> bool:
         """Return True if this adapter recognizes and can evaluate the package bytes."""
-        pass
 
     @abstractmethod
     def inspect_package(self, package_bytes: bytes) -> PackageReference:
         """Extract metadata (format, digest, size, declared_id) without full verification."""
-        pass
 
     @abstractmethod
     def supported_checks(self) -> set[str]:
         """Return set of check_ids that this adapter can evaluate."""
-        pass
 
     @abstractmethod
     def evaluate(
@@ -46,6 +42,6 @@ class PackageAdapter(ABC):
         package_bytes: bytes,
         profile: VerificationProfile,
         trust_inputs: list[TrustInput],
+        package_trusted_keys_pem: list[dict[str, Any]] | None = None,
     ) -> list[CheckResult]:
         """Execute atomic verification checks requested by the profile."""
-        pass

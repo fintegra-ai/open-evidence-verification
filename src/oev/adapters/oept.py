@@ -36,6 +36,7 @@ def is_oept_available() -> bool:
     """Check if the oept library is installed and importable."""
     try:
         import oept  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -47,6 +48,7 @@ def _require_oept() -> Any:
         import oept
         import oept.signing
         import oept.verify
+
         return oept
     except ImportError as exc:
         raise OptionalDependencyMissingError(
@@ -66,7 +68,6 @@ class OEPTAdapter(PackageAdapter):
         """Check if package_bytes is a ZIP archive claiming oept-bundle/0.1 support."""
         if len(package_bytes) < 22:
             return False
-        # Fast check for ZIP signature PK\x03\x04
         if not package_bytes.startswith(b"PK\x03\x04"):
             return False
         try:
@@ -74,8 +75,8 @@ class OEPTAdapter(PackageAdapter):
                 if "manifest.json" not in zf.namelist():
                     return False
                 manifest_data = json.loads(zf.read("manifest.json").decode("utf-8"))
-                return manifest_data.get("bundle_spec_version") == OEPT_FORMAT_ID
-        except Exception:
+                return bool(manifest_data.get("bundle_spec_version") == OEPT_FORMAT_ID)
+        except (zipfile.BadZipFile, KeyError, json.JSONDecodeError, UnicodeDecodeError, OSError):
             return False
 
     def inspect_package(self, package_bytes: bytes) -> PackageReference:
@@ -89,8 +90,8 @@ class OEPTAdapter(PackageAdapter):
                 if "manifest.json" in zf.namelist():
                     manifest_data = json.loads(zf.read("manifest.json").decode("utf-8"))
                     declared_id = manifest_data.get("bundle_id")
-        except Exception:
-            pass
+        except (zipfile.BadZipFile, KeyError, json.JSONDecodeError, UnicodeDecodeError, OSError):
+            declared_id = None
 
         return PackageReference(
             digest=digest,
@@ -112,7 +113,6 @@ class OEPTAdapter(PackageAdapter):
         """Execute atomic checks against the OEPT bundle using OEPT's offline verifier."""
         oept = _require_oept()
 
-        # Convert caller-supplied package keys to OEPT TrustedKeys
         oept_keys = []
         if package_trusted_keys_pem:
             for k in package_trusted_keys_pem:
@@ -127,7 +127,6 @@ class OEPTAdapter(PackageAdapter):
 
         status_code = oept_result.status
 
-        # Map OEPT verification outcomes to atomic OEVP checks
         results: list[CheckResult] = []
         all_requested = set(profile.required_checks) | set(profile.optional_checks)
 
@@ -156,7 +155,9 @@ class OEPTAdapter(PackageAdapter):
                 detail = "Archive safety check failed; manifest was not evaluated"
             elif status_code in ("MALFORMED_BUNDLE", "UNSUPPORTED_SPEC_VERSION"):
                 manifest_status = CheckStatus.FAIL
-                detail = "; ".join(oept_result.notes) or f"Manifest evaluation failed with {status_code}"
+                detail = (
+                    "; ".join(oept_result.notes) or f"Manifest evaluation failed with {status_code}"
+                )
             else:
                 manifest_status = CheckStatus.PASS
                 detail = f"Manifest parsed successfully (spec: {oept_result.bundle_spec_version})"

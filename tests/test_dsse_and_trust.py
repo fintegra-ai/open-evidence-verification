@@ -1,11 +1,10 @@
 import base64
+
 import pytest
 
-from oev.canonical import canonicalize_json
 from oev.dsse import (
     DEFAULT_PAYLOAD_TYPE,
     DsseError,
-    build_dsse_envelope,
     compute_pae,
     parse_dsse_envelope,
 )
@@ -25,7 +24,7 @@ from oev.signing import (
     sign_receipt_dsse,
     verify_dsse_signature_with_key,
 )
-from oev.trust import TrustStore, TrustedKey, evaluate_receipt_trust
+from oev.trust import TrustedKey, TrustStore, evaluate_receipt_trust
 
 
 def make_sample_receipt() -> VerificationReceipt:
@@ -40,9 +39,7 @@ def make_sample_receipt() -> VerificationReceipt:
             profile_digest="sha256:" + "2" * 64,
         ),
         verifier=VerifierIdentity(software="oev-test", version="0.1.0"),
-        trust_inputs=[
-            TrustInput(trust_id="k1", type="public_key", digest="sha256:" + "3" * 64)
-        ],
+        trust_inputs=[TrustInput(trust_id="k1", type="public_key", digest="sha256:" + "3" * 64)],
         checks=[
             CheckResult(check_id="archive_safety", category="safety", status=CheckStatus.PASS),
         ],
@@ -116,7 +113,7 @@ def test_attacker_self_key_hostile_test():
     Without caller trust key, this must NEVER be trusted.
     """
     attacker_priv, attacker_pub = generate_ed25519_keypair()
-    legit_priv, legit_pub = generate_ed25519_keypair()
+    _legit_priv, legit_pub = generate_ed25519_keypair()
 
     receipt = make_sample_receipt()
     attacker_envelope = sign_receipt_dsse(receipt, attacker_priv, key_id="trusted-verifier-corp")
@@ -127,17 +124,17 @@ def test_attacker_self_key_hostile_test():
     assert eval_no_store.crypto_valid is False
 
     # 2. Caller provides trust store with ONLY legitimate verifier -> untrusted
-    trust_store = TrustStore.from_list([
-        {"key_id": "legit-01", "public_key_pem": legit_pub.decode("utf-8")}
-    ])
+    trust_store = TrustStore.from_list(
+        [{"key_id": "legit-01", "public_key_pem": legit_pub.decode("utf-8")}]
+    )
     eval_legit_store = evaluate_receipt_trust(attacker_envelope, trust_store=trust_store)
     assert eval_legit_store.is_trusted is False
     assert eval_legit_store.trusted_key_id is None
 
     # 3. If caller explicitly adds attacker key to their trust store -> trusted
-    trust_store_with_attacker = TrustStore.from_list([
-        {"key_id": "audited-signer", "public_key_pem": attacker_pub.decode("utf-8")}
-    ])
+    trust_store_with_attacker = TrustStore.from_list(
+        [{"key_id": "audited-signer", "public_key_pem": attacker_pub.decode("utf-8")}]
+    )
     eval_explicit = evaluate_receipt_trust(attacker_envelope, trust_store=trust_store_with_attacker)
     assert eval_explicit.is_trusted is True
     assert eval_explicit.trusted_key_id == "audited-signer"
@@ -160,7 +157,9 @@ def test_malformed_dsse_envelopes():
         parse_dsse_envelope({"payload": "abcd", "signatures": []})
 
     with pytest.raises(DsseError, match="invalid Base64"):
-        parse_dsse_envelope({"payloadType": "test", "payload": "not valid base64!@#", "signatures": [{"sig": "a"}]})
+        parse_dsse_envelope(
+            {"payloadType": "test", "payload": "not valid base64!@#", "signatures": [{"sig": "a"}]}
+        )
 
     with pytest.raises(DsseError, match="must be a non-empty array"):
         parse_dsse_envelope({"payloadType": "test", "payload": "abcd", "signatures": []})

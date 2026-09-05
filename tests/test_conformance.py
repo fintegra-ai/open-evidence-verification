@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-import pytest
 
 from oev.engine import execute_verification
 from oev.inspect import inspect_receipt_file
@@ -29,7 +28,12 @@ def test_conformance_fixture_01_valid_oept_pass():
     )
 
     assert receipt.overall_result == OverallResult.TECHNICAL_CHECKS_PASSED
-    assert str(receipt.overall_result.value) == expected["overall_result"]
+    actual_overall = (
+        receipt.overall_result.value
+        if hasattr(receipt.overall_result, "value")
+        else str(receipt.overall_result)
+    )
+    assert actual_overall == expected["overall_result"]
 
     # Verify each check matches expected PASS
     checks_by_id = {c.check_id: c.status for c in receipt.checks}
@@ -39,7 +43,9 @@ def test_conformance_fixture_01_valid_oept_pass():
 
     # Inspect the pre-generated signed receipt in fixture
     trust_store = TrustStore.from_file(fix_dir / "verifier-trust-keys.json")
-    inspection = inspect_receipt_file(fix_dir / "receipt.dsse.json", verifier_trust_store=trust_store)
+    inspection = inspect_receipt_file(
+        fix_dir / "receipt.dsse.json", verifier_trust_store=trust_store
+    )
     assert inspection.receipt_digest_valid is True
     assert inspection.is_trusted_signer is True
     assert inspection.crypto_valid is True
@@ -60,7 +66,12 @@ def test_conformance_fixture_02_tampered_package():
     )
 
     assert receipt.overall_result == OverallResult.TECHNICAL_CHECKS_FAILED
-    assert str(receipt.overall_result.value) == expected["overall_result"]
+    actual_overall = (
+        receipt.overall_result.value
+        if hasattr(receipt.overall_result, "value")
+        else str(receipt.overall_result)
+    )
+    assert actual_overall == expected["overall_result"]
 
     checks_by_id = {c.check_id: c.status for c in receipt.checks}
     for chk_id, exp_status in expected["checks"].items():
@@ -82,7 +93,12 @@ def test_conformance_fixture_03_required_signature_unsatisfied():
     )
 
     assert receipt.overall_result == OverallResult.PROFILE_UNSATISFIED
-    assert str(receipt.overall_result.value) == expected["overall_result"]
+    actual_overall = (
+        receipt.overall_result.value
+        if hasattr(receipt.overall_result, "value")
+        else str(receipt.overall_result)
+    )
+    assert actual_overall == expected["overall_result"]
 
     checks_by_id = {c.check_id: c.status for c in receipt.checks}
     for chk_id, exp_status in expected["checks"].items():
@@ -97,7 +113,9 @@ def test_conformance_fixture_04_tampered_receipt():
     with open(fix_dir / "expected-result.json") as f:
         expected = json.load(f)
 
-    inspection = inspect_receipt_file(fix_dir / "receipt.dsse.json", verifier_trust_store=trust_store)
+    inspection = inspect_receipt_file(
+        fix_dir / "receipt.dsse.json", verifier_trust_store=trust_store
+    )
     assert inspection.is_trusted_signer is False
     assert inspection.crypto_valid is False
     assert inspection.receipt_digest_valid is False
