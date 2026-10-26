@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Ed25519 cryptographic signing and verification for DSSE receipt envelopes.
 
 Security model:

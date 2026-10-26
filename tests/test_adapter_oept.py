@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 from pathlib import Path
 
@@ -9,13 +11,14 @@ from oev.models import CheckStatus, OverallResult, VerificationProfile
 from oev.signing import generate_ed25519_keypair
 from oev.trust import TrustStore, evaluate_receipt_trust
 
-OEPT_FIXTURES = Path("/Users/investintech/Developer/open-evidence-provenance/conformance/fixtures")
+# In-repo conformance fixtures carry byte-stable neutral OEPT bundles.
+FIXTURES_DIR = Path(__file__).resolve().parents[1] / "conformance" / "fixtures"
 
 
 @pytest.mark.skipif(not is_oept_available(), reason="OEPT not installed")
 def test_oept_adapter_valid_signed_passes():
-    bundle_path = OEPT_FIXTURES / "02-valid-signed" / "bundle.zip"
-    trust_keys_path = OEPT_FIXTURES / "02-valid-signed" / "trust-keys.json"
+    bundle_path = FIXTURES_DIR / "01-valid-oept-pass" / "package.zip"
+    trust_keys_path = FIXTURES_DIR / "01-valid-oept-pass" / "package-trust-keys.json"
 
     assert bundle_path.is_file()
     assert trust_keys_path.is_file()
@@ -66,7 +69,7 @@ def test_oept_adapter_unsigned_package_with_required_signature():
     """When a profile REQUIRES application_signature and the package is unsigned,
     the overall result MUST be PROFILE_UNSATISFIED (not PARTIAL, not PASSED).
     """
-    bundle_path = OEPT_FIXTURES / "01-valid-unsigned" / "bundle.zip"
+    bundle_path = FIXTURES_DIR / "03-required-signature-unsatisfied" / "package.zip"
     bundle_bytes = bundle_path.read_bytes()
 
     profile = VerificationProfile(
@@ -96,7 +99,7 @@ def test_oept_adapter_unsigned_package_with_required_signature():
 
 @pytest.mark.skipif(not is_oept_available(), reason="OEPT not installed")
 def test_oept_adapter_tampered_package():
-    bundle_path = OEPT_FIXTURES / "03-tampered-artifact" / "bundle.zip"
+    bundle_path = FIXTURES_DIR / "02-tampered-package" / "package.zip"
     bundle_bytes = bundle_path.read_bytes()
 
     profile = VerificationProfile(

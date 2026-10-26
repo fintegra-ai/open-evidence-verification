@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Schema loading and validation for OEVP artifacts."""
 
 from __future__ import annotations

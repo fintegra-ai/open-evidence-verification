@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/oev/schemas/pack-verification-receipt.schema.json",
+  "title": "OEVP Pack Verification Receipt",
+  "description": "Portable, offline-verifiable receipt recording the technical verification of a decision evidence pack (oev-pack-receipt/0.1): exactly which checks passed, failed, or were not run, plus the pack digest, verifier identity, and verification time. Asserts technical integrity only — never factual, commercial, or legal truth, compliance approval, or fraud detection.",
+  "type": "object",
+  "required": [
+    "protocol_version",
+    "receipt_id",
+    "pack_id",
+    "case_id",
+    "pack_digest",
+    "recomputed_pack_digest",
+    "pack_digest_valid",
+    "overall",
+    "signature_state",
+    "verified_at",
+    "verifier",
+    "checks",
+    "member_results",
+    "extra_files",
+    "structure_errors",
+    "receipt_digest"
+  ],
+  "properties": {
+    "protocol_version": {
+      "type": "string",
+      "enum": ["oev-pack-receipt/0.1"]
+    },
+    "receipt_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "pack_id": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "case_id": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "pack_digest": {
+      "description": "Pack digest declared by the manifest; empty when the manifest was unreadable.",
+      "type": "string",
+      "pattern": "^(sha256:[0-9a-f]{64})?$"
+    },
+    "recomputed_pack_digest": {
+      "description": "Pack digest recomputed by the verifier; empty when not computable.",
+      "type": "string",
+      "pattern": "^(sha256:[0-9a-f]{64})?$"
+    },
+    "pack_digest_valid": {
+      "type": "boolean"
+    },
+    "overall": {
+      "type": "string",
+      "enum": ["PACK_VALID", "PACK_INVALID"]
+    },
+    "signature_state": {
+      "description": "Honest three-way manifest signature state. SIGNATURE_NOT_PRESENT never invalidates a pack; SIGNATURE_INVALID means the signature was present but not established valid.",
+      "type": "string",
+      "enum": ["SIGNATURE_NOT_PRESENT", "SIGNATURE_VALID", "SIGNATURE_INVALID"]
+    },
+    "verified_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "verifier": {
+      "type": "object",
+      "required": ["software", "version"],
+      "properties": {
+        "software": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["check_id", "status", "note"],
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "enum": [
+              "pack_present",
+              "manifest_schema",
+              "manifest_canonical",
+              "pack_digest",
+              "member_coverage",
+              "snapshot_membership",
+              "member_hashes",
+              "cross_references",
+              "manifest_signature"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PASS", "FAIL", "NOT_RUN", "NOT_APPLICABLE", "UNVERIFIED"]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "member_results": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "status",
+          "expected_digest",
+          "expected_size_bytes",
+          "actual_size_bytes"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "status": {
+            "type": "string",
+            "enum": ["MATCH", "DIGEST_MISMATCH", "NOT_CANONICAL", "MISSING", "UNREADABLE"]
+          },
+          "expected_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "actual_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "expected_size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "actual_size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "extra_files": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 1024
+      }
+    },
+    "structure_errors": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 2048
+      }
+    },
+    "receipt_digest": {
+      "description": "Self-digest: sha256 over JCS of this receipt body without the receipt_digest key.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Verification Profile loading, validation, and content hashing."""
 
 from __future__ import annotations

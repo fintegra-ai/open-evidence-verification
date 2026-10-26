@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Abstract base class and protocol for package format adapters in OEVP."""
 
 from __future__ import annotations

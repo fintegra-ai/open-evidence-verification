@@ -62,6 +62,14 @@ Every receipt MUST conform to `verification-receipt.schema.json` (JSON Schema Dr
 }
 ```
 
+### Optional: re-issuance reference
+
+A receipt MAY additionally carry an optional `superseded_receipt` object with exactly two
+members, `receipt_id` and `receipt_digest`, identifying a prior receipt that this receipt
+supersedes (e.g. after a re-verification triggered re-issuance). The field is not set by
+the reference engine today; verifiers must not treat its presence as an integrity
+statement about the superseded receipt.
+
 ---
 
 ## 3. Normative Receipt Digest Recursion Rule

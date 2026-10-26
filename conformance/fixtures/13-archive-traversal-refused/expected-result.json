@@ -1,0 +1,1 @@
+{"expected_error_contains":"traverses outside the root","extraction_refused":true,"note":"Validate-before-extract: the traversal entry is rejected during inspection, so no file is ever written to the extraction root.","target_directory_untouched":true}

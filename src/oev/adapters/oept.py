@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Optional reference package adapter for Open Evidence Provenance Toolkit (OEPT) bundles.
 
 Implements support for the 'oept-bundle/0.1' archive specification.

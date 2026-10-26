@@ -1,0 +1,1 @@
+{"expected_error_contains":"duplicate entry name","extraction_refused":true,"note":"Two entries claiming the same name are either corruption or an attempt to shadow a member with different content; both are refused.","target_directory_untouched":true}

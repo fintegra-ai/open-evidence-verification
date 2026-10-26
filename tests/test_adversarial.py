@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Hostile adversarial review test suite for OEVP v0.1.
 
 Validates resilience against:

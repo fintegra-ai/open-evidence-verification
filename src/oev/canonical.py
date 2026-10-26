@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Deterministic JSON Canonicalization Scheme (RFC 8785 / JCS) with integer boundary enforcement.
 
 OEPT security review identified that Python JCS implementations can exhibit unsafe
@@ -14,7 +16,7 @@ import json
 import math
 from typing import Any
 
-import jcs  # type: ignore[import-untyped]
+import jcs
 
 # IEEE 754 safe integer range for exact representation in JSON / ECMAScript
 MAX_SAFE_INTEGER: int = 9007199254740991  # 2**53 - 1

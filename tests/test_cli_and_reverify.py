@@ -1,8 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 from pathlib import Path
 
 import pytest
 
+from oev.adapters.oept import is_oept_available
 from oev.cli import main
 from oev.engine import execute_verification
 from oev.models import VerificationProfile
@@ -10,7 +13,10 @@ from oev.profiles import load_profile
 from oev.reverify import reverify_package
 from oev.signing import generate_ed25519_keypair
 
-OEPT_FIXTURES = Path("/Users/investintech/Developer/open-evidence-provenance/conformance/fixtures")
+# In-repo conformance fixtures carry byte-stable neutral OEPT bundles.
+FIXTURES_DIR = Path(__file__).resolve().parents[1] / "conformance" / "fixtures"
+
+pytestmark = pytest.mark.skipif(not is_oept_available(), reason="OEPT not installed")
 
 
 @pytest.fixture
@@ -35,8 +41,8 @@ def sample_profile_file(tmp_path: Path) -> Path:
 def test_cli_verify_inspect_and_reverify_roundtrip(
     tmp_path: Path, sample_profile_file: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    bundle_path = OEPT_FIXTURES / "02-valid-signed" / "bundle.zip"
-    trust_keys_path = OEPT_FIXTURES / "02-valid-signed" / "trust-keys.json"
+    bundle_path = FIXTURES_DIR / "01-valid-oept-pass" / "package.zip"
+    trust_keys_path = FIXTURES_DIR / "01-valid-oept-pass" / "package-trust-keys.json"
     receipt_out = tmp_path / "receipt.dsse.json"
 
     # Verifier keypair
@@ -118,9 +124,9 @@ def test_cli_verify_inspect_and_reverify_roundtrip(
 
 
 def test_reverify_package_mismatch(tmp_path: Path, sample_profile_file: Path) -> None:
-    bundle_a = OEPT_FIXTURES / "02-valid-signed" / "bundle.zip"
-    bundle_b = OEPT_FIXTURES / "01-valid-unsigned" / "bundle.zip"
-    trust_keys = OEPT_FIXTURES / "02-valid-signed" / "trust-keys.json"
+    bundle_a = FIXTURES_DIR / "01-valid-oept-pass" / "package.zip"
+    bundle_b = FIXTURES_DIR / "03-required-signature-unsatisfied" / "package.zip"
+    trust_keys = FIXTURES_DIR / "01-valid-oept-pass" / "package-trust-keys.json"
     with open(trust_keys) as f:
         tk_data = json.load(f)
 
@@ -145,8 +151,8 @@ def test_reverify_package_mismatch(tmp_path: Path, sample_profile_file: Path) ->
 
 
 def test_reverify_profile_digest_substitution(tmp_path: Path, sample_profile_file: Path) -> None:
-    bundle = OEPT_FIXTURES / "02-valid-signed" / "bundle.zip"
-    trust_keys = OEPT_FIXTURES / "02-valid-signed" / "trust-keys.json"
+    bundle = FIXTURES_DIR / "01-valid-oept-pass" / "package.zip"
+    trust_keys = FIXTURES_DIR / "01-valid-oept-pass" / "package-trust-keys.json"
     with open(trust_keys) as f:
         tk_data = json.load(f)
 

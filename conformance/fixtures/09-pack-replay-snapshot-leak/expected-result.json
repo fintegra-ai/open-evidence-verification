@@ -1,0 +1,1 @@
+{"excluded_fact_id":"fact-901","note":"A recorded rule run consumed a fact observed after the snapshot capture (2026-10-01T09:00:00Z > captured_at 2026-10-01T08:00:00Z): the recorded history contradicts the snapshot boundary, so the entire replay refuses.","replay_status":"SNAPSHOT_LEAK"}

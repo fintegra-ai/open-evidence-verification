@@ -1,0 +1,1 @@
+{"description":"Strict profile including application signature; bundle carries a corrupted signature","optional_checks":[],"parameters":{},"profile_id":"integrity-check-profile","profile_version":"0.1.0","protocol_version":"oev-profile/0.1","required_checks":["archive_safety","manifest_structure","member_digests","application_signature"],"target_format":"oept-bundle/0.1"}

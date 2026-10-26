@@ -1,0 +1,1 @@
+{"checks":{"application_signature":"FAIL","archive_safety":"PASS","manifest_structure":"PASS","member_digests":"PASS"},"note":"Bundle carries a corrupted application signature; signature check FAILs (distinct from UNVERIFIED on unsigned bundles)","overall_result":"TECHNICAL_CHECKS_FAILED"}

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Data models and enums for the Open Evidence Verification Protocol (OEVP)."""
 
 from __future__ import annotations

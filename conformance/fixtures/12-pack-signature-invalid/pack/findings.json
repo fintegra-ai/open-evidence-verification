@@ -1,0 +1,1 @@
+{"case_id":"demo-case-001","findings":[{"created_at":"2026-10-01T08:05:00Z","finding_id":"finding-001","related_fact_ids":["fact-001","fact-002"],"rule_id":"pressure-above-limit","rule_run_id":"run-001","severity":"MEDIUM","summary":"Latest pressure reading 87.4 psi exceeds the configured limit 85 psi."}],"protocol_version":"oev-decision-pack/0.2"}

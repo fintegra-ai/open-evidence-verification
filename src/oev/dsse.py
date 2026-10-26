@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Implementation of the Dead Simple Signing Envelope (DSSE v1 specification).
 
 DSSE is maintained in the Secure Systems Lab / in-toto ecosystem.

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "oev"
-version = "0.1.0"
-description = "Open Evidence Verification Protocol (OEVP) - Vendor-neutral evidence appraisal, verification profiles, and portable receipts"
+version = "0.2.0"
+description = "Open Evidence Verification Protocol (OEVP) - Vendor-neutral evidence appraisal, verification profiles, portable receipts, and decision evidence packs"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
@@ -16,12 +16,14 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Security :: Cryptography",
+    "Typing :: Typed",
 ]
 dependencies = [
     "cryptography>=41.0.0",

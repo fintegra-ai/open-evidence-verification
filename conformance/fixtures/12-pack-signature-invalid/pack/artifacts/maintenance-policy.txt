@@ -1,0 +1,5 @@
+Maintenance policy (synthetic demo document)
+============================================
+- Pressure limit for station P-42: 85 psi.
+- Service is considered overdue after 180 days without maintenance.
+- Readings above the limit must be reviewed by a maintenance lead.

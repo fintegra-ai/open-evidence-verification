@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Offline Receipt Inspection decoupled from evidence package bytes.
 
 INSPECTION INVARIANT:

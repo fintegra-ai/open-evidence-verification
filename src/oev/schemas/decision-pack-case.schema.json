@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/oev/schemas/decision-pack-case.schema.json",
+  "title": "OEVP Decision Pack Case Record",
+  "description": "Case identity and lifecycle record for a decision evidence pack (oev-decision-pack/0.2).",
+  "type": "object",
+  "required": ["protocol_version", "case_id", "case_type", "opened_at"],
+  "properties": {
+    "protocol_version": {
+      "type": "string",
+      "enum": ["oev-decision-pack/0.2"]
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "case_type": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 512
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4096
+    },
+    "opened_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "closed_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "originating_system": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "notes": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "string",
+        "maxLength": 1024
+      }
+    }
+  },
+  "additionalProperties": false
+}

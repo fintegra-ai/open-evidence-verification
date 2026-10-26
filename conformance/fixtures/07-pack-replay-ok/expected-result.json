@@ -1,0 +1,1 @@
+{"eligible_fact_ids":["fact-001","fact-002","fact-003"],"note":"A valid pack replayed with the matching out-of-band pin succeeds; only snapshot-bound facts observed at or before captured_at are eligible.","replay_status":"REPLAY_OK"}

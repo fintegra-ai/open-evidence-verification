@@ -1,0 +1,1 @@
+{"note":"The copy is internally self-consistent (digests and pack_digest agree), but the out-of-band pin anchors the original bytes: replay refuses.","pinned_pack_digest":"sha256:7871579fa558987434a14932150c6b36b29c9966b7ef79d4dcf92bfa93c7f9dd","replay_status":"PACK_HASH_CHANGED"}

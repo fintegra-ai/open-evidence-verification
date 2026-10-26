@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Mechanical test proving protocol core independence from OEPT and EvidenceOS."""
 
 import ast

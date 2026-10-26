@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Independent package re-verification comparing fresh execution against historic receipt."""
 
 from __future__ import annotations

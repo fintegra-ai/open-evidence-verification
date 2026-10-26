@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Verification Receipt construction, validation, digest computation, and overall aggregation.
 
 CRITICAL RECURSION RULE:

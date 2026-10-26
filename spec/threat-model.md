@@ -1,7 +1,7 @@
-# OEVP Threat Model & Security Boundaries (v0.1)
+# OEVP Threat Model & Security Boundaries (v0.2)
 
 Status: Pre-1.0 Draft  
-Scope: Verification Profile evaluation, Verification Receipt generation, DSSE envelope verification, offline inspection, and package re-verification.
+Scope: Verification Profile evaluation, Verification Receipt generation, DSSE envelope verification, offline inspection, package re-verification, and (since 0.2.0) decision evidence packs: offline pack verification, portable pack verification receipts, the snapshot replay safety gate, and pack archive (ZIP) transport.
 
 ---
 
@@ -45,6 +45,11 @@ The attacker is assumed to have the ability to:
 | **Profile Downgrade / Substitution** | Attacker substitutes a strict profile with an empty profile under the same `profile_id`. | Mitigated by binding the canonical `profile_digest` (SHA-256) inside the receipt. Re-verification detects any profile modification and aborts with `PROFILE_DIGEST_MISMATCH`. |
 | **Stale Receipt Replay** | Attacker presents a passing receipt issued for Package A as proof for Package B. | Mitigated by binding `package.digest` (SHA-256) inside the receipt. Re-verification recomputes the package digest and aborts on mismatch. |
 | **Malicious Archive / Expansion** | Attacker submits zip bombs, path traversals (`../`), or symlink attacks. | Delegated to package adapters (e.g. OEPT's streaming verification) with strict entry-count, total uncompressed size, and path sanitization limits prior to content reading. |
+| **Pack Member Tampering** | Attacker modifies a pack member's bytes after issuance. | Mitigated by the SHA-256 manifest: verification recomputes every member digest over the exact stored (canonical) bytes and fails closed (`PACK_INVALID`). |
+| **Self-Consistent Pack Rewrite** | Attacker rewrites a member *and* rebuilds the manifest (digests, sizes, `pack_digest` all agree), so digest checks alone pass. | Mitigated by DSSE manifest signatures (any rewrite breaks payload binding) and, for replay, by the out-of-band replay pin: `replay_snapshot` refuses with `PACK_HASH_CHANGED` when the recomputed digest differs from the pin. |
+| **Pack Signature Stripping / Replacement** | Attacker removes `manifest.dsse.json` or replaces the envelope with one signed by their own key (possibly with a spoofed `keyid`). | Mitigated by the honest three-way signature state: an unsigned pack is `SIGNATURE_NOT_PRESENT` (never invalid, but a visible trust failure — exit `2` for callers who pinned roots), and a present-but-unprovable signature is `SIGNATURE_INVALID` / `SIGNATURE_UNTRUSTED`, blocking replay for callers who pin trust roots. Embedded keys never bootstrap trust. |
+| **Pack Archive Hostile Entries** | Attacker submits a pack ZIP with traversal names, duplicate entry names, encrypted entries, or decompression bombs. | Mitigated by validate-before-extract in `oev.pack_archive`: every entry is validated (path sanitization, duplicate rejection, encryption and size bounds) before any file is written; a rejected archive leaves the target directory untouched. |
+| **Snapshot Replay Leak** | A recorded rule run consumed evidence observed after the snapshot capture; a replay would silently use out-of-scope history. | Mitigated by the replay safety gate: the replay scope contains only facts bound to the snapshot and observed at or before `captured_at`; a recorded run that consumed later evidence refuses the entire replay (`SNAPSHOT_LEAK`) instead of re-scoping. |
 | **Confidentiality / Data Leakage** | Confidential payload data leaked to third-party auditors inspecting receipts. | Receipts record digests, check IDs, execution times, and limitation codes only. No raw evidence bytes or PII are copied into receipts. |
 | **JCS Number Precision Attacks** | Attacker injects large integers outside standard IEEE 754 precision to cause parser divergence. | OEVP strictly validates that all integers fall within $[-(2^{53} - 1), 2^{53} - 1]$ prior to canonicalization, rejecting unsafe values. |
 
@@ -59,6 +64,7 @@ The protocol explicitly does NOT provide:
 - **Trusted timestamp authority**: `recorded_verification_time` is an unauthenticated verifier clock reading, not an RFC 3161 timestamp.
 - **Malware detection**: Evidence packages are not scanned for malicious payloads.
 - **Content execution**: Verifiers NEVER execute code or binaries contained within evidence packages.
+- **Rule re-execution**: v0.2 records rule definitions, runs, and outcomes, and provides the replay *safety gate*; actually re-evaluating recorded rule conditions is explicitly future work and no protocol claim depends on it.
 
 ---
 

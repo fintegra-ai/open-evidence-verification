@@ -1,0 +1,1 @@
+{"manifest_signature_check":"FAIL","note":"A present-but-corrupt signature is SIGNATURE_INVALID — never valid, and never confused with an unsigned pack (fixture 11). Member integrity is unaffected, so the pack verdict stays PACK_VALID while the trust decision is reported honestly.","overall":"PACK_VALID","signature_crypto_valid":false,"signature_state":"SIGNATURE_INVALID"}

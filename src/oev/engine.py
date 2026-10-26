@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Verification engine orchestrating package evaluation, receipt generation, and DSSE signing."""
 
 from __future__ import annotations
@@ -6,6 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from oev import __version__
 from oev.adapters import get_adapter_for_format, get_adapter_for_package
 from oev.hashing import sha256_bytes
 from oev.models import (
@@ -25,7 +28,8 @@ from oev.receipts import aggregate_overall_result, finalize_receipt
 from oev.signing import sign_receipt_dsse
 
 DEFAULT_VERIFIER_SOFTWARE = "oev"
-DEFAULT_VERIFIER_VERSION = "0.1.0"
+# Receipts record the installed package version; kept in sync with oev.__version__.
+DEFAULT_VERIFIER_VERSION = __version__
 
 
 def utc_now_iso() -> str:

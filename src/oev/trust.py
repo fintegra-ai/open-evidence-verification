@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """Caller-supplied trust roots and trust evaluation for OEVP.
 
 NON-NEGOTIABLE TRUST INVARIANTS:

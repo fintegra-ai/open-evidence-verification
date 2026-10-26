@@ -1,0 +1,1 @@
+{"manifest_signature_check":"NOT_APPLICABLE","note":"An unsigned pack is never invalid because of the missing signature; its integrity stands on the manifest and member digests alone.","overall":"PACK_VALID","signature_state":"SIGNATURE_NOT_PRESENT"}
