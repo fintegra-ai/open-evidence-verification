@@ -37,6 +37,7 @@ import shlex
 import subprocess
 import sys
 from contextlib import redirect_stdout
+from datetime import datetime, timezone
 from io import StringIO
 from pathlib import Path
 from typing import Any
@@ -199,11 +200,49 @@ def compare(
     }
 
 
+def build_evidence_pack(
+    report: dict[str, Any], vector_manifest: dict[str, Any], pack_path: Path
+) -> Path:
+    """Package one conformance run as an OEPT bundle (Faz C+).
+
+    The bundle carries the run report and the vector-set manifest so the run
+    itself becomes verifiable evidence: ``oev verify`` accepts it as an
+    oept-bundle/0.1 package, and its member digests bind the exact report
+    bytes. Requires the ``oept`` package.
+    """
+    try:
+        from oept.bundle import BundleBuilder
+    except ImportError as exc:
+        raise SystemExit(
+            "Error: --evidence-pack requires the 'oept' package. "
+            "Install with 'pip install oept' or 'pip install open-evidence-verification[oept]'."
+        ) from exc
+    builder = BundleBuilder(
+        bundle_id="oev-conformance-evidence",
+        created_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+    # The bundle manifest schema requires these two members; the reference
+    # fixtures use the same neutral empty bodies.
+    builder.add_file("facts.json", b"[]")
+    builder.add_file("provenance.json", b"[]")
+    builder.add_file(
+        "evidence/report.json",
+        (json.dumps(report, indent=2, ensure_ascii=False) + "\n").encode("utf-8"),
+    )
+    builder.add_file(
+        "evidence/vector-set-manifest.json",
+        (json.dumps(vector_manifest, indent=2, ensure_ascii=False) + "\n").encode("utf-8"),
+    )
+    pack_path.write_bytes(builder.build_zip_bytes())
+    return pack_path
+
+
 def execute(
     vectors_dir: Path,
     verifier: str,
     report_path: Path | None = None,
     only: str | None = None,
+    evidence_pack: Path | None = None,
 ) -> int:
     manifest = load_manifest(vectors_dir)
     results: list[dict[str, Any]] = []
@@ -240,10 +279,16 @@ def execute(
     passed = sum(1 for r in results if r.get("passed") is True)
     failed = sum(1 for r in results if r.get("passed") is False)
     skipped = sum(1 for r in results if r.get("passed") is None)
+    try:
+        from oev import __version__ as oev_version
+    except ImportError:
+        oev_version = None
     report = {
         "vector_set": manifest["vector_set"],
         "vector_set_version": manifest["version"],
         "verifier": verifier,
+        "oev_version": oev_version,
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "summary": {
             "total": len(results),
             "passed": passed,
@@ -257,6 +302,8 @@ def execute(
         report_path.write_text(rendered + "\n", encoding="utf-8")
     else:
         print(rendered)
+    if evidence_pack is not None:
+        build_evidence_pack(report, manifest, evidence_pack)
     return 0 if failed == 0 else 1
 
 
@@ -272,8 +319,14 @@ def main(argv: list[str] | None = None) -> int:
         "--report", type=Path, default=None, help="write the JSON report here (default: stdout)"
     )
     run.add_argument("--only", default=None, help="run a single vector by id")
+    run.add_argument(
+        "--evidence-pack",
+        type=Path,
+        default=None,
+        help="also write the run as an OEPT bundle (verifiable with 'oev verify') at this path",
+    )
     args = parser.parse_args(argv)
-    return execute(args.vectors_dir, args.verifier, args.report, args.only)
+    return execute(args.vectors_dir, args.verifier, args.report, args.only, args.evidence_pack)
 
 
 if __name__ == "__main__":

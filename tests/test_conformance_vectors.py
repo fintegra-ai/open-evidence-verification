@@ -8,6 +8,9 @@ import importlib.util
 import json
 import subprocess
 import sys
+import zipfile
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -112,3 +115,50 @@ def test_manifest_and_vector_files_are_consistent() -> None:
             assert not (directory / "expected.json").exists(), (
                 f"{entry['id']} planned but has expected.json"
             )
+
+
+def test_evidence_pack_is_an_oept_bundle_verifiable_by_oevp(tmp_path: Path) -> None:
+    from oev.cli import main as cli_main
+
+    report_path = tmp_path / "report.json"
+    pack_path = tmp_path / "evidence.oeptbundle.zip"
+    code, report = _run_runner(
+        "run",
+        "--verifier",
+        "builtin",
+        "--report",
+        str(report_path),
+        "--evidence-pack",
+        str(pack_path),
+    )
+    assert code == 0
+    assert pack_path.is_file()
+    assert report["oev_version"] is not None
+
+    with zipfile.ZipFile(pack_path) as archive:
+        names = set(archive.namelist())
+        assert "evidence/report.json" in names
+        assert "evidence/vector-set-manifest.json" in names
+
+    # OEVP verifies the pack as an oept-bundle/0.1 package: structure and
+    # member digests bind the exact report bytes (signature not required,
+    # so the profile omits application_signature).
+    profile = tmp_path / "profile.json"
+    profile.write_text(
+        json.dumps(
+            {
+                "protocol_version": "oev-profile/0.1",
+                "profile_id": "evidence-pack-profile",
+                "profile_version": "0.1.0",
+                "target_format": "oept-bundle/0.1",
+                "required_checks": ["archive_safety", "manifest_structure", "member_digests"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    buffer = StringIO()
+    with redirect_stdout(buffer):
+        ret = cli_main(["verify", str(pack_path), "--profile", str(profile)])
+    assert ret == 0
+    receipt = json.loads(buffer.getvalue().splitlines()[0])
+    assert receipt["overall_result"] == "TECHNICAL_CHECKS_PASSED"

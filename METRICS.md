@@ -45,8 +45,12 @@ or private claims.
 - `conformance/vectors/` (12 active + 2 planned) and
   `conformance/run_vectors.py`: language-independent vector set v0.1.0 with
   a machine-readable report; the Python reference verifier passes 12/12
-  active vectors (`test_conformance_vectors.py`). Runner evidence-pack
-  production (C+) is not implemented yet.
+  active vectors (`test_conformance_vectors.py`). C+ evidence-pack
+  production implemented: `--evidence-pack` emits every run as an OEPT
+  bundle (report + vector-set manifest as bound members) that `oev verify`
+  accepts with `TECHNICAL_CHECKS_PASSED`. Still open in C+: auto-minimize
+  of fuzz findings to vector drafts, and shipping the vector set as a
+  standalone package.
 - `GOVERNANCE.md`: decisions adopted — DCO over CLA, CC-BY-4.0 for
   spec/docs, conformance-brand rule, no funding intake before a second
   maintainer, access-transfer checklist.

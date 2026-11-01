@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Normative protocol draft `spec/OEVP-1.0-draft.md` (RFC 2119, MUST→test
   traceability, versioning policy, non-guarantees), `GOVERNANCE.md`, and
   BOUNDARY.md §5 Faz-A+ disposition decisions.
+- Conformance runner C+ evidence packs: `--evidence-pack` writes each run
+  as an OEPT bundle (run report and vector-set manifest as digest-bound
+  members) that `oev verify` accepts with `TECHNICAL_CHECKS_PASSED`.
 
 ## [0.2.1] - 2026-11-01
 
