@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### Changed
+
+- Distribution name changed from `oev` to `open-evidence-verification` (PyPI name taken by an unrelated project). Import package `oev` and CLI `oev` are unchanged; install with `pip install open-evidence-verification[oept]` for the OEPT adapter.
+
 ## [0.2.1] - 2026-11-01
 
 ### Fixed

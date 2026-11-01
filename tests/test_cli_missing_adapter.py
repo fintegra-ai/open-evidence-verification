@@ -42,7 +42,7 @@ def test_cli_verify_clean_error_when_adapter_dependency_missing(
 ) -> None:
     def fake_require_oept() -> None:
         raise OptionalDependencyMissingError(
-            "OEPT is not installed. Install with 'pip install oev[oept]'."
+            "OEPT is not installed. Install with 'pip install open-evidence-verification[oept]'."
         )
 
     monkeypatch.setattr(oept_adapter_module, "_require_oept", fake_require_oept)
@@ -123,7 +123,7 @@ def test_cli_reverify_clean_error_when_adapter_dependency_missing(
 
     def fake_require_oept() -> None:
         raise OptionalDependencyMissingError(
-            "OEPT is not installed. Install with 'pip install oev[oept]'."
+            "OEPT is not installed. Install with 'pip install open-evidence-verification[oept]'."
         )
 
     monkeypatch.setattr(oept_adapter_module, "_require_oept", fake_require_oept)

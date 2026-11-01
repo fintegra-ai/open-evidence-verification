@@ -55,7 +55,7 @@ def _require_oept() -> Any:
     except ImportError as exc:
         raise OptionalDependencyMissingError(
             "OEPT is not installed. Install with 'pip install oept' "
-            "or 'pip install oev[oept]' to evaluate oept-bundle/0.1 packages."
+            "or 'pip install open-evidence-verification[oept]' to evaluate oept-bundle/0.1 packages."
         ) from exc
 
 
