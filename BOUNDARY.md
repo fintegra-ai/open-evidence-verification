@@ -54,3 +54,32 @@ in §3.
   Import names (`oev`, `oept`) and CLI names (`oev`, `oept`) are unchanged.
 - The name `oev` on PyPI is held by an unrelated project and is NOT ours;
   never publish under it and never present it as ours.
+
+## 5. Faz A+ decisions (2026-11-01 — decided under the owner's explicit delegation)
+
+Disposition of the local EvidenceOS working copies found during the boundary
+scan (gitleaks, full history, redacted). **No directory was deleted or
+modified by this program** — dispositions below are binding defaults the
+owner may overturn, not executed deletions.
+
+| Copy | Disposition | Rationale / next step |
+| :--- | :--- | :--- |
+| `EvidenceOS_Finance_EU_Demo` | **canonical** working copy | matches `mehmet-tur/EvidenceOS-Finance`; has the 134 `case_*` packs and full history |
+| `EvidenceOS_Finance_Muse_C29/C32/C33`, `*_WO1*`, `*_Audit_UI`, `*_Investigation_UI`, `*_Synthetic`, `Gemini_WO1_Review`, `QUAL_*`, `Integration`, `Codex_Final_Audit` (12 git-less dirs) | **archive candidates** | no git history → cannot be history-scanned; compress to cold storage, never run scans against them as if canonical; deletion requires explicit owner confirmation per directory |
+| `EvidenceOS_Islamic_Finance_Saudi` | **separate canonical** (different product line) | 1 generic-api-key finding in a test file — verify synthetic, then rotate if real |
+| `EvidenceOS_Video_Agent`, `evidencekit` | clean (0 findings) | no action |
+| `muhasebe-mcp`, `muhasebe-mcp-mvp` | archive candidates | not git repos |
+
+Secret-handling decisions from the closed-side scan (13 findings in
+`EU_Demo` history, 1 in Saudi):
+
+1. **`deployment/certs/gateway.key` (EU_Demo, commit `1a9423090f`): rotation
+   is REQUIRED** before any public artifact links this history. Until
+   rotated, the repo stays private.
+2. The `generic-api-key` / `jwt` / `curl-auth-header` hits in docs, tests,
+   and patch scripts are most likely synthetic demo values — but the
+   synthetic-vs-real classification and any rotation belong to the owner;
+   this program only recorded file/commit/rule (no content was printed or
+   copied anywhere).
+3. Open repositories remain clean: OEVP zero findings, OEPT exactly the one
+   documented test-only conformance keypair (allowlisted with rationale).

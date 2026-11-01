@@ -36,3 +36,20 @@ baseline (2026-11-01) and is the seed for the public metrics page (Kapı J).
 Metrics move only when the linked evidence moves. A phase gate counts as
 passed only with the artifacts its gate names — never with intent, plans,
 or private claims.
+
+## Program artifacts added 2026-11-01 (Faz B/C/I baseline)
+
+- `spec/OEVP-1.0-draft.md` (this repo) and `spec/OEPT-1.0-draft.md`
+  (sibling): normative RFC 2119 drafts with MUST→test traceability, error
+  taxonomy, versioning policy, and explicit non-guarantees.
+- `conformance/vectors/` (12 active + 2 planned) and
+  `conformance/run_vectors.py`: language-independent vector set v0.1.0 with
+  a machine-readable report; the Python reference verifier passes 12/12
+  active vectors (`test_conformance_vectors.py`). Runner evidence-pack
+  production (C+) is not implemented yet.
+- `GOVERNANCE.md`: decisions adopted — DCO over CLA, CC-BY-4.0 for
+  spec/docs, conformance-brand rule, no funding intake before a second
+  maintainer, access-transfer checklist.
+- `BOUNDARY.md` §5: dispositions for the 18 scanned closed-side copies
+  (canonical = EU_Demo; 12 git-less copies = archive candidates; nothing
+  deleted) and the rotation decision for `deployment/certs/gateway.key`.

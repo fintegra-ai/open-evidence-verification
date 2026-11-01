@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Distribution name changed from `oev` to `open-evidence-verification` (PyPI name taken by an unrelated project). Import package `oev` and CLI `oev` are unchanged; install with `pip install open-evidence-verification[oept]` for the OEPT adapter.
 
+## [Unreleased]
+
+### Added
+
+- Language-independent conformance vector set (`conformance/vectors/`,
+  version 0.1.0, 12 active vectors covering fixtures 01–12) with a runner
+  (`conformance/run_vectors.py`) that also drives external verifiers through
+  a documented stdin/stdout-JSON contract and emits machine-readable
+  reports. Fixture 13/14 (pack-archive extraction) vectors are drafted and
+  marked planned until the extraction CLI contract exists.
+- Normative protocol draft `spec/OEVP-1.0-draft.md` (RFC 2119, MUST→test
+  traceability, versioning policy, non-guarantees), `GOVERNANCE.md`, and
+  BOUNDARY.md §5 Faz-A+ disposition decisions.
+
 ## [0.2.1] - 2026-11-01
 
 ### Fixed
