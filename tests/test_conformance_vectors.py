@@ -14,9 +14,18 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+from oev.adapters.oept import is_oept_available
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNNER = REPO_ROOT / "conformance" / "run_vectors.py"
 VECTORS_DIR = REPO_ROOT / "conformance" / "vectors"
+
+# The active vectors verify OEPT bundles through the OEVP adapter, so the
+# whole module needs OEPT. The CI integration job installs OEPT and asserts
+# importability, so these tests run (instead of skip) there.
+pytestmark = pytest.mark.skipif(not is_oept_available(), reason="OEPT not installed")
 
 
 def _run_runner(*args: str) -> tuple[int, dict[str, Any]]:
