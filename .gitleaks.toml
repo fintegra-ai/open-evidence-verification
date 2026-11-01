@@ -1,0 +1,14 @@
+# gitleaks configuration — OEVP (open-evidence-verification)
+#
+# Full-history scans are part of the Faz A (NLnet plan v2) boundary work.
+# Baseline scan 2026-11-01, gitleaks 8.30.1, entire git history: zero
+# findings. No allowlist entries exist on purpose — anything a scan flags
+# is a boundary violation by default: stop, triage, and close it (rotate,
+# purge, or justify in a documented allowlist entry) before merging.
+#
+# Repo hygiene rules this enforces (see BOUNDARY.md): no .env, tokens,
+# private keys, customer/finance data, or case_* / tmp/ / output/
+# artifacts may enter this repository, in any commit, ever.
+
+[extend]
+useDefault = true

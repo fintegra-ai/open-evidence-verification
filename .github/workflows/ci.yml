@@ -64,3 +64,22 @@ jobs:
 
       - name: Test (pytest, full suite with OEPT present)
         run: pytest -rs
+
+  secrets:
+    # Faz A (NLnet plan v2): secret scanning is a boundary rule, not a best
+    # effort. The pinned gitleaks binary scans the full git history on every
+    # push and every PR; .gitleaks.toml at the repo root carries the (empty
+    # by policy) allowlist with justifications.
+    name: secret scan (gitleaks, full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks (pinned)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/scripts/install.sh | sh -s -- -b . v8.30.1
+
+      - name: Scan full git history (any finding fails the job)
+        run: ./gitleaks detect --source . --report-format json --report-path gitleaks-report.json --redact --exit-code 1
