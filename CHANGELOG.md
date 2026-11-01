@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Normative protocol draft `spec/OEVP-1.0-draft.md` (RFC 2119, MUST→test
   traceability, versioning policy, non-guarantees), `GOVERNANCE.md`, and
   BOUNDARY.md §5 Faz-A+ disposition decisions.
+- Fuzz minimizer `conformance/minimize_fuzz.py`: greedily minimizes a
+  crashing archive at member level against any verifier command, verifies
+  the failure persists, and emits a vector DRAFT (captured failure
+  signature) for the fuzz-finding issue process.
 - Conformance runner C+ evidence packs: `--evidence-pack` writes each run
   as an OEPT bundle (run report and vector-set manifest as digest-bound
   members) that `oev verify` accepts with `TECHNICAL_CHECKS_PASSED`.

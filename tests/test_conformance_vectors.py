@@ -162,3 +162,72 @@ def test_evidence_pack_is_an_oept_bundle_verifiable_by_oevp(tmp_path: Path) -> N
     assert ret == 0
     receipt = json.loads(buffer.getvalue().splitlines()[0])
     assert receipt["overall_result"] == "TECHNICAL_CHECKS_PASSED"
+
+
+def test_minimize_fuzz_shrinks_to_the_essential_trigger(tmp_path: Path) -> None:
+    stub = tmp_path / "evil_detector.py"
+    stub.write_text(
+        (
+            "import sys, zipfile\n"
+            "names = zipfile.ZipFile(sys.argv[1]).namelist()\n"
+            "sys.exit(1 if any('evil' in n for n in names) else 0)\n"
+        ),
+        encoding="utf-8",
+    )
+    crash = tmp_path / "crash.zip"
+    with zipfile.ZipFile(crash, "w") as archive:
+        for name in ("a.txt", "b.txt", "c.txt", "d.txt", "e.txt", "evil-payload.bin"):
+            archive.writestr(name, b"data-" + name.encode())
+
+    out_dir = tmp_path / "draft"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "conformance" / "minimize_fuzz.py"),
+            "--input",
+            str(crash),
+            "--verifier",
+            f"{sys.executable} {stub} {{input}}",
+            "--out-dir",
+            str(out_dir),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    with zipfile.ZipFile(out_dir / "minimized.zip") as archive:
+        assert archive.namelist() == ["evil-payload.bin"]
+    draft = json.loads((out_dir / "input.json").read_text(encoding="utf-8"))
+    assert draft["status"] == "draft"
+    assert draft["failure_signature"]["exit_code"] == 1
+    assert draft["original_member_count"] == 6
+    assert draft["minimized_member_count"] == 1
+
+
+def test_minimize_fuzz_refuses_when_nothing_reproduces(tmp_path: Path) -> None:
+    stub = tmp_path / "always_ok.py"
+    stub.write_text("import sys\nsys.exit(0)\n", encoding="utf-8")
+    crash = tmp_path / "crash.zip"
+    with zipfile.ZipFile(crash, "w") as archive:
+        archive.writestr("a.txt", b"x")
+    out_dir = tmp_path / "draft"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "conformance" / "minimize_fuzz.py"),
+            "--input",
+            str(crash),
+            "--verifier",
+            f"{sys.executable} {stub} {{input}}",
+            "--out-dir",
+            str(out_dir),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert completed.returncode == 2
+    assert not (out_dir / "input.json").exists()

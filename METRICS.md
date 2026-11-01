@@ -48,9 +48,10 @@ or private claims.
   active vectors (`test_conformance_vectors.py`). C+ evidence-pack
   production implemented: `--evidence-pack` emits every run as an OEPT
   bundle (report + vector-set manifest as bound members) that `oev verify`
-  accepts with `TECHNICAL_CHECKS_PASSED`. Still open in C+: auto-minimize
-  of fuzz findings to vector drafts, and shipping the vector set as a
-  standalone package.
+  accepts with `TECHNICAL_CHECKS_PASSED`. Auto-minimize of fuzz
+  findings implemented (`conformance/minimize_fuzz.py` emits vector
+  drafts). Still open in C+: shipping the vector set as a standalone
+  package (new-distribution decision).
 - `GOVERNANCE.md`: decisions adopted — DCO over CLA, CC-BY-4.0 for
   spec/docs, conformance-brand rule, no funding intake before a second
   maintainer, access-transfer checklist.
