@@ -1,0 +1,15 @@
+{
+  "protocol_version": "oev-profile/0.1",
+  "profile_id": "public-procurement-verify",
+  "profile_version": "0.1.0",
+  "target_format": "oept-bundle/0.1",
+  "required_checks": [
+    "archive_safety",
+    "manifest_structure",
+    "member_digests",
+    "application_signature"
+  ],
+  "optional_checks": [],
+  "parameters": {},
+  "description": "Public procurement evidence: tender documents, evaluation criteria, decision rationale and objection chain, signed and digest-bound."
+}

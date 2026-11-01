@@ -1,0 +1,56 @@
+name: release verify (build + vectors + evidence pack)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Faz G: every release produces its own verification evidence. Build the
+# distributions, check metadata, run the conformance vector set with the
+# reference verifier, and emit an OEPT evidence pack that itself verifies
+# with `oev verify` (çift dogfooding).
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Build distributions
+        run: |
+          python -m pip install build twine
+          python -m build --outdir dist/ .
+          twine check dist/*
+
+      - name: Install the built wheel (not the checkout)
+        run: |
+          python -m pip install dist/*.whl "oept>=0.1.1"
+
+      - name: Run the conformance vector set
+        run: |
+          python conformance/run_vectors.py run --verifier builtin \
+            --report report.json --evidence-pack evidence.oeptbundle.zip
+          python -c "import json; r=json.load(open('report.json')); assert r['summary']['failed']==0, r['summary']"
+
+      - name: Verify the evidence pack with oev (çift dogfooding)
+        run: |
+          python -c "
+          import json, sys
+          from oev.cli import main
+          rc = main(['verify', 'evidence.oeptbundle.zip', '--profile', 'profiles/finance-demo-neutral/profile.json', '--json'])
+          assert rc == 0, 'evidence pack failed verification'
+          print('evidence pack verified: TECHNICAL_CHECKS_PASSED')"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conformance-evidence
+          path: |
+            report.json
+            evidence.oeptbundle.zip

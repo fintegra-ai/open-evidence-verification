@@ -1,0 +1,15 @@
+{
+  "protocol_version": "oev-profile/0.1",
+  "profile_id": "media-provenance-verify",
+  "profile_version": "0.1.0",
+  "target_format": "oept-bundle/0.1",
+  "required_checks": [
+    "manifest_structure",
+    "member_digests"
+  ],
+  "optional_checks": [
+    "application_signature"
+  ],
+  "parameters": {},
+  "description": "Media provenance appraisal (C2PA bridge): media members plus C2PA manifests as evidence; C2PA trust lists stay in C2PA's domain."
+}

@@ -1,0 +1,14 @@
+{
+  "protocol_version": "oev-profile/0.1",
+  "profile_id": "research-data-verify",
+  "profile_version": "0.1.0",
+  "target_format": "oept-bundle/0.1",
+  "required_checks": [
+    "archive_safety",
+    "manifest_structure",
+    "member_digests"
+  ],
+  "optional_checks": [],
+  "parameters": {},
+  "description": "Research data appraisal (RO-Crate bridge): an RO-Crate inside an OEPT bundle, verified by checksum manifest; replay-safe snapshots for datasets."
+}

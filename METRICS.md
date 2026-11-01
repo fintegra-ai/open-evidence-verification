@@ -14,7 +14,9 @@ baseline (2026-11-01) and is the seed for the public metrics page (Kapı J).
 | Public pilot packages | 0 | none published |
 | Failed interop attempts (recorded) | 0 | interop table does not exist yet (Faz G) |
 | PyPI releases | `open-evidence-verification 0.2.1`, `oept 0.1.1` | pypi.org JSON API, 2026-11-01 |
-| npm releases | 0 | publication awaits the npm-name decision (Faz D); TS verifier repo is public at github.com/fintegra-ai/open-evidence-verifier-ts |
+| npm releases | **1** — `oept-verifier-ts 0.1.0` (published 2026-11-01, maintainer fintegraai) | registry.npmjs.org/oept-verifier-ts |
+| Profiles total | 6 — 1 registered (Profile 0) + 5 draft (domain adapters/vectors are funded-work) | profiles/registry.json |
+| Interop table | published with 2 entries (both project-internal; external submissions open) | docs/interop-table.md |
 | Standalone vector package | oev-conformance-vectors 0.1.0 — built locally, twine-clean, builtin acceptance 12/12 against the PyPI-published reference; Kapı C final item is publication (owner push) | `~/Developer/oev-conformance-vectors` (local; distribution name decided) |
 | NLnet dossier | nlnet/evidence-dossier.md — linked evidence + funded-work split (application prose is human-written by rule) | this repo |
 | Closed-side security incident | CLOSED 2026-11-01: gateway.key purged from ALL pushed refs (filter-repo, 368 commits rewritten; fresh-clone gitleaks 0 private-key findings); residuals recorded in EU_Demo docs/runbooks/SECURITY_ROTATION.md (hidden GitHub PR refs, stale local branches, 12 synthetic-candidate findings) | EU_Demo runbook purge record |

@@ -16,6 +16,91 @@
       "core_changes_required": false,
       "registered_at": "2026-11-01",
       "note": "Profile 0: neutral, synthetic finance demo profile (demo-case-001 shape) moved into the open repository; no closed-side data or logic. Demonstrates the Faz F mechanism: a profile is spec + vectors, registered without touching src/."
+    },
+    {
+      "profile_id": "software-release-verify",
+      "profile_version": "0.1.0",
+      "profile_number": 1,
+      "domain": "software release (SLSA/in-toto bridge)",
+      "status": "draft",
+      "spec": "profiles/software-release/profile.json",
+      "vectors": {
+        "note": "pending domain adapter + domain vectors (funded-work candidate); mechanical checks covered by oev-conformance-vectors@0.1.0"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-01",
+      "note": "Draft per PROFILE-REGISTRY rules: profile document is schema-valid and uses only adapter-supported checks; domain-specific vectors require the domain adapter before promotion to registered."
+    },
+    {
+      "profile_id": "ai-eval-verify",
+      "profile_version": "0.1.0",
+      "profile_number": 2,
+      "domain": "AI inference/evaluation",
+      "status": "draft",
+      "spec": "profiles/ai-eval/profile.json",
+      "vectors": {
+        "note": "pending domain adapter + domain vectors (funded-work candidate); mechanical checks covered by oev-conformance-vectors@0.1.0"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-01",
+      "note": "Draft per PROFILE-REGISTRY rules: profile document is schema-valid and uses only adapter-supported checks; domain-specific vectors require the domain adapter before promotion to registered."
+    },
+    {
+      "profile_id": "research-data-verify",
+      "profile_version": "0.1.0",
+      "profile_number": 3,
+      "domain": "research data (RO-Crate bridge)",
+      "status": "draft",
+      "spec": "profiles/research-data/profile.json",
+      "vectors": {
+        "note": "pending domain adapter + domain vectors (funded-work candidate); mechanical checks covered by oev-conformance-vectors@0.1.0"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-01",
+      "note": "Draft per PROFILE-REGISTRY rules: profile document is schema-valid and uses only adapter-supported checks; domain-specific vectors require the domain adapter before promotion to registered."
+    },
+    {
+      "profile_id": "public-procurement-verify",
+      "profile_version": "0.1.0",
+      "profile_number": 4,
+      "domain": "public procurement evidence",
+      "status": "draft",
+      "spec": "profiles/public-procurement/profile.json",
+      "vectors": {
+        "note": "pending domain adapter + domain vectors (funded-work candidate); mechanical checks covered by oev-conformance-vectors@0.1.0"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-01",
+      "note": "Draft per PROFILE-REGISTRY rules: profile document is schema-valid and uses only adapter-supported checks; domain-specific vectors require the domain adapter before promotion to registered."
+    },
+    {
+      "profile_id": "media-provenance-verify",
+      "profile_version": "0.1.0",
+      "profile_number": 5,
+      "domain": "media provenance (C2PA bridge)",
+      "status": "draft",
+      "spec": "profiles/media-provenance/profile.json",
+      "vectors": {
+        "note": "pending domain adapter + domain vectors (funded-work candidate); mechanical checks covered by oev-conformance-vectors@0.1.0"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-01",
+      "note": "Draft per PROFILE-REGISTRY rules: profile document is schema-valid and uses only adapter-supported checks; domain-specific vectors require the domain adapter before promotion to registered."
+    },
+    {
+      "profile_id": "strict-conformance-profile",
+      "profile_version": "0.1.0",
+      "profile_number": 0,
+      "domain": "finance (neutral demo)",
+      "status": "registered",
+      "spec": "profiles/finance-demo-neutral/profile.json",
+      "vectors": {
+        "note": "the strict conformance profile is exercised by the full OEVP vector set (conformance/vectors/, version 0.1.0)",
+        "vector_set": "oev-conformance-vectors@0.1.0"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-01",
+      "note": "Profile 0: neutral, synthetic finance demo profile (demo-case-001 shape) moved into the open repository; no closed-side data or logic. Demonstrates the Faz F mechanism: a profile is spec + vectors, registered without touching src/."
     }
   ],
   "acceptance_criteria": {

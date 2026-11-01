@@ -1,0 +1,16 @@
+{
+  "protocol_version": "oev-profile/0.1",
+  "profile_id": "ai-eval-verify",
+  "profile_version": "0.1.0",
+  "target_format": "oept-bundle/0.1",
+  "required_checks": [
+    "archive_safety",
+    "manifest_structure",
+    "member_digests"
+  ],
+  "optional_checks": [
+    "application_signature"
+  ],
+  "parameters": {},
+  "description": "AI inference/evaluation appraisal: model card, evaluation-set digests, parameters and outputs as bundle members with digest binding."
+}

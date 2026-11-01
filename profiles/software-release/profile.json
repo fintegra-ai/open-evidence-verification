@@ -1,0 +1,16 @@
+{
+  "protocol_version": "oev-profile/0.1",
+  "profile_id": "software-release-verify",
+  "profile_version": "0.1.0",
+  "target_format": "oept-bundle/0.1",
+  "required_checks": [
+    "manifest_structure",
+    "member_digests",
+    "application_signature"
+  ],
+  "optional_checks": [
+    "archive_safety"
+  ],
+  "parameters": {},
+  "description": "Software release appraisal: a signed release bundle whose members include build provenance documents (SLSA/in-toto). Domain adapters for SLSA level checks are funded-work; mechanical checks are enforced today."
+}
