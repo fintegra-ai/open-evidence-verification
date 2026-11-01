@@ -15,7 +15,7 @@ baseline (2026-11-01) and is the seed for the public metrics page (Kapı J).
 | Failed interop attempts (recorded) | 0 | interop table does not exist yet (Faz G) |
 | PyPI releases | `open-evidence-verification 0.2.1`, `oept 0.1.1` | pypi.org JSON API, 2026-11-01 |
 | npm releases | 0 | publication awaits the npm-name decision (Faz D) |
-| Faz D slices 1-2 (local) | TS verifier passes 6/12 OEVP vectors with identical results (verify, inspect_receipt, reverify fail-closed prefix); 6 pack-action vectors unsupported fail-closed; ambiguity log A-001 closed | `~/Developer/open-evidence-verifier-ts` (local-only, no remote/publish yet); acceptance via `run_vectors.py` external mode |
+| Faz D slices 1-3 (local) | TS verifier passes 12/12 OEVP vectors with identical results - parity criterion of Kapı D met (verify, inspect_receipt, reverify, pack_verify, pack_replay, pack_receipt_verify); ambiguity log stable | `~/Developer/open-evidence-verifier-ts` (local-only, no remote/publish yet); acceptance report via `run_vectors.py` external mode, exit 0 |
 | Downloads / stars | not tracked yet (secondary metric; added only with a link) | — |
 
 ## Known negative facts (recorded, not hidden)
