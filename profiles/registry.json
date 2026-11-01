@@ -1,0 +1,27 @@
+{
+  "registry_version": "0.1.0",
+  "registry_spec": "profiles/PROFILE-REGISTRY.md",
+  "profiles": [
+    {
+      "profile_id": "strict-conformance-profile",
+      "profile_version": "0.1.0",
+      "profile_number": 0,
+      "domain": "finance (neutral demo)",
+      "status": "registered",
+      "spec": "profiles/finance-demo-neutral/profile.json",
+      "vectors": {
+        "note": "the strict conformance profile is exercised by the full OEVP vector set (conformance/vectors/, version 0.1.0)",
+        "vector_set": "oev-conformance-vectors@0.1.0"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-01",
+      "note": "Profile 0: neutral, synthetic finance demo profile (demo-case-001 shape) moved into the open repository; no closed-side data or logic. Demonstrates the Faz F mechanism: a profile is spec + vectors, registered without touching src/."
+    }
+  ],
+  "acceptance_criteria": {
+    "spec": "a complete verification-profile/0.1 document (schema-validated) with a stated domain and required_checks drawn only from adapter-supported checks or explicitly marked UNSUPPORTED",
+    "vectors": "at least one named vector set version whose runner report passes for the profile",
+    "ownership": "a named maintainer responsible for the profile",
+    "registration": "a PR adding the entry; merged after GOVERNANCE.md §2 review; core code MUST NOT change"
+  }
+}
