@@ -1,0 +1,13 @@
+{
+  "vector_id": "06-signature-invalid",
+  "exit_code": 2,
+  "asserts": {
+    "overall_result": "TECHNICAL_CHECKS_FAILED",
+    "checks": {
+      "application_signature": "FAIL",
+      "archive_safety": "PASS",
+      "manifest_structure": "PASS",
+      "member_digests": "PASS"
+    }
+  }
+}

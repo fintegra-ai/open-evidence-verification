@@ -1,0 +1,8 @@
+{
+  "vector_id": "12-pack-signature-invalid",
+  "exit_code": 2,
+  "asserts": {
+    "overall": "PACK_VALID",
+    "signature_state": "SIGNATURE_INVALID"
+  }
+}

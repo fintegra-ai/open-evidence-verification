@@ -1,0 +1,13 @@
+{
+  "vector_id": "05-reverify-package-mismatch",
+  "action": "reverify",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/05-reverify-package-mismatch",
+  "inputs": {
+    "profile": "conformance/fixtures/05-reverify-package-mismatch/profile.json",
+    "package": "conformance/fixtures/05-reverify-package-mismatch/package.zip",
+    "receipt": "conformance/fixtures/05-reverify-package-mismatch/receipt.dsse.json"
+  },
+  "note": "Package digest mismatch between historic receipt and fresh package bytes"
+}

@@ -1,0 +1,11 @@
+{
+  "vector_id": "14-archive-duplicate-member-refused",
+  "action": "pack_archive_extract",
+  "status": "planned",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/14-archive-duplicate-member-refused",
+  "inputs": {
+    "archive": "conformance/fixtures/14-archive-duplicate-member-refused/hostile.zip"
+  },
+  "note": "Two entries claiming the same name are either corruption or an attempt to shadow a member with different content; both are refused."
+}

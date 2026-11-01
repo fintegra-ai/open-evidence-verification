@@ -1,0 +1,13 @@
+{
+  "vector_id": "06-signature-invalid",
+  "action": "verify",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/06-signature-invalid",
+  "inputs": {
+    "profile": "conformance/fixtures/06-signature-invalid/profile.json",
+    "package": "conformance/fixtures/06-signature-invalid/package.zip",
+    "package_trust_keys": "conformance/fixtures/06-signature-invalid/package-trust-keys.json"
+  },
+  "note": "Bundle carries a corrupted application signature; signature check FAILs (distinct from UNVERIFIED on unsigned bundles)"
+}

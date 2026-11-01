@@ -1,0 +1,12 @@
+{
+  "vector_id": "08-pack-replay-hash-changed",
+  "action": "pack_replay",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/08-pack-replay-hash-changed",
+  "inputs": {
+    "pin": "conformance/fixtures/08-pack-replay-hash-changed/pin.json",
+    "pack": "conformance/fixtures/08-pack-replay-hash-changed/pack"
+  },
+  "note": "The copy is internally self-consistent (digests and pack_digest agree), but the out-of-band pin anchors the original bytes: replay refuses."
+}

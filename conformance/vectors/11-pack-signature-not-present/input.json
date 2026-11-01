@@ -1,0 +1,11 @@
+{
+  "vector_id": "11-pack-signature-not-present",
+  "action": "pack_verify",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/11-pack-signature-not-present",
+  "inputs": {
+    "pack": "conformance/fixtures/11-pack-signature-not-present/pack"
+  },
+  "note": "An unsigned pack is never invalid because of the missing signature; its integrity stands on the manifest and member digests alone."
+}

@@ -1,0 +1,12 @@
+{
+  "vector_id": "02-tampered-package",
+  "exit_code": 2,
+  "asserts": {
+    "overall_result": "TECHNICAL_CHECKS_FAILED",
+    "checks": {
+      "archive_safety": "PASS",
+      "manifest_structure": "PASS",
+      "member_digests": "FAIL"
+    }
+  }
+}

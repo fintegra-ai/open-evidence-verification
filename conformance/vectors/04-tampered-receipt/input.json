@@ -1,0 +1,12 @@
+{
+  "vector_id": "04-tampered-receipt",
+  "action": "inspect_receipt",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/04-tampered-receipt",
+  "inputs": {
+    "verifier_keys": "conformance/fixtures/04-tampered-receipt/verifier-trust-keys.json",
+    "receipt": "conformance/fixtures/04-tampered-receipt/receipt.dsse.json"
+  },
+  "note": "Tampered receipt payload must fail DSSE signature verification and self-digest check"
+}

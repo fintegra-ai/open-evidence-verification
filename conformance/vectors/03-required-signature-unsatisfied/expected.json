@@ -1,0 +1,13 @@
+{
+  "vector_id": "03-required-signature-unsatisfied",
+  "exit_code": 2,
+  "asserts": {
+    "overall_result": "PROFILE_UNSATISFIED",
+    "checks": {
+      "application_signature": "UNVERIFIED",
+      "archive_safety": "PASS",
+      "manifest_structure": "PASS",
+      "member_digests": "PASS"
+    }
+  }
+}

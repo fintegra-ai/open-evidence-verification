@@ -1,0 +1,13 @@
+{
+  "vector_id": "10-pack-receipt-roundtrip",
+  "action": "pack_receipt_verify",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/10-pack-receipt-roundtrip",
+  "inputs": {
+    "pack": "conformance/fixtures/10-pack-receipt-roundtrip/pack",
+    "pack_receipt": "conformance/fixtures/10-pack-receipt-roundtrip/pack-verification-receipt.json",
+    "pack_verifier_keys": "conformance/fixtures/10-pack-receipt-roundtrip/verifier-keys.json"
+  },
+  "note": "A third party verifies the receipt offline from the receipt bytes alone; with the pack on disk, the recorded pack digest binds to the manifest actually present. The receipt records technical integrity only."
+}

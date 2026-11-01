@@ -1,0 +1,12 @@
+{
+  "vector_id": "03-required-signature-unsatisfied",
+  "action": "verify",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/03-required-signature-unsatisfied",
+  "inputs": {
+    "profile": "conformance/fixtures/03-required-signature-unsatisfied/profile.json",
+    "package": "conformance/fixtures/03-required-signature-unsatisfied/package.zip"
+  },
+  "note": "Required check 'application_signature' was UNVERIFIED on unsigned package"
+}

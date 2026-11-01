@@ -1,0 +1,9 @@
+{
+  "vector_id": "10-pack-receipt-roundtrip",
+  "exit_code": 0,
+  "asserts": {
+    "overall": "RECEIPT_VALID",
+    "receipt_digest_valid": true,
+    "pack_binding": "PACK_BINDING_MATCH"
+  }
+}

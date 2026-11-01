@@ -1,0 +1,81 @@
+{
+  "vector_set": "oev-conformance-vectors",
+  "version": "0.1.0",
+  "spec_target": "spec/OEVP-1.0-draft.md",
+  "generated_from": "conformance/fixtures (byte-stable, referenced not copied)",
+  "runner": "conformance/run_vectors.py",
+  "vectors": [
+    {
+      "id": "01-valid-oept-pass",
+      "action": "verify",
+      "status": "active"
+    },
+    {
+      "id": "02-tampered-package",
+      "action": "verify",
+      "status": "active"
+    },
+    {
+      "id": "03-required-signature-unsatisfied",
+      "action": "verify",
+      "status": "active"
+    },
+    {
+      "id": "04-tampered-receipt",
+      "action": "inspect_receipt",
+      "status": "active"
+    },
+    {
+      "id": "05-reverify-package-mismatch",
+      "action": "reverify",
+      "status": "active"
+    },
+    {
+      "id": "06-signature-invalid",
+      "action": "verify",
+      "status": "active"
+    },
+    {
+      "id": "07-pack-replay-ok",
+      "action": "pack_replay",
+      "status": "active"
+    },
+    {
+      "id": "08-pack-replay-hash-changed",
+      "action": "pack_replay",
+      "status": "active"
+    },
+    {
+      "id": "09-pack-replay-snapshot-leak",
+      "action": "pack_replay",
+      "status": "active"
+    },
+    {
+      "id": "10-pack-receipt-roundtrip",
+      "action": "pack_receipt_verify",
+      "status": "active"
+    },
+    {
+      "id": "11-pack-signature-not-present",
+      "action": "pack_verify",
+      "status": "active"
+    },
+    {
+      "id": "12-pack-signature-invalid",
+      "action": "pack_verify",
+      "status": "active"
+    },
+    {
+      "id": "13-archive-traversal-refused",
+      "action": "pack_archive_extract",
+      "status": "planned",
+      "reason": "pack-archive extraction has no CLI contract yet; runner support is C+ work"
+    },
+    {
+      "id": "14-archive-duplicate-member-refused",
+      "action": "pack_archive_extract",
+      "status": "planned",
+      "reason": "pack-archive extraction has no CLI contract yet; runner support is C+ work"
+    }
+  ]
+}

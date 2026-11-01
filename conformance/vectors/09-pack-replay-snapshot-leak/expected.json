@@ -1,0 +1,7 @@
+{
+  "vector_id": "09-pack-replay-snapshot-leak",
+  "exit_code": 2,
+  "asserts": {
+    "replay_status": "SNAPSHOT_LEAK"
+  }
+}

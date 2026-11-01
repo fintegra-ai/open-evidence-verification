@@ -1,0 +1,7 @@
+{
+  "vector_id": "08-pack-replay-hash-changed",
+  "exit_code": 2,
+  "asserts": {
+    "replay_status": "PACK_HASH_CHANGED"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "vector_id": "02-tampered-package",
+  "action": "verify",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/02-tampered-package",
+  "inputs": {
+    "profile": "conformance/fixtures/02-tampered-package/profile.json",
+    "package": "conformance/fixtures/02-tampered-package/package.zip"
+  },
+  "note": ""
+}

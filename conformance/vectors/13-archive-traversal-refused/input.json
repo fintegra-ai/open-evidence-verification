@@ -1,0 +1,11 @@
+{
+  "vector_id": "13-archive-traversal-refused",
+  "action": "pack_archive_extract",
+  "status": "planned",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/13-archive-traversal-refused",
+  "inputs": {
+    "archive": "conformance/fixtures/13-archive-traversal-refused/hostile.zip"
+  },
+  "note": "Validate-before-extract: the traversal entry is rejected during inspection, so no file is ever written to the extraction root."
+}

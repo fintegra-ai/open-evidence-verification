@@ -1,0 +1,12 @@
+{
+  "vector_id": "07-pack-replay-ok",
+  "action": "pack_replay",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/07-pack-replay-ok",
+  "inputs": {
+    "pin": "conformance/fixtures/07-pack-replay-ok/pin.json",
+    "pack": "conformance/fixtures/07-pack-replay-ok/pack"
+  },
+  "note": "A valid pack replayed with the matching out-of-band pin succeeds; only snapshot-bound facts observed at or before captured_at are eligible."
+}

@@ -1,0 +1,13 @@
+{
+  "vector_id": "01-valid-oept-pass",
+  "exit_code": 0,
+  "asserts": {
+    "overall_result": "TECHNICAL_CHECKS_PASSED",
+    "checks": {
+      "application_signature": "PASS",
+      "archive_safety": "PASS",
+      "manifest_structure": "PASS",
+      "member_digests": "PASS"
+    }
+  }
+}

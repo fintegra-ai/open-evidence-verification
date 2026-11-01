@@ -1,0 +1,7 @@
+{
+  "vector_id": "07-pack-replay-ok",
+  "exit_code": 0,
+  "asserts": {
+    "replay_status": "REPLAY_OK"
+  }
+}

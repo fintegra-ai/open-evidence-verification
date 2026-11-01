@@ -1,0 +1,8 @@
+{
+  "vector_id": "05-reverify-package-mismatch",
+  "exit_code": 2,
+  "asserts": {
+    "reverification_result": "MISMATCH",
+    "package_digest_match": false
+  }
+}

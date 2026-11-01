@@ -1,0 +1,13 @@
+{
+  "vector_id": "01-valid-oept-pass",
+  "action": "verify",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/01-valid-oept-pass",
+  "inputs": {
+    "profile": "conformance/fixtures/01-valid-oept-pass/profile.json",
+    "package": "conformance/fixtures/01-valid-oept-pass/package.zip",
+    "package_trust_keys": "conformance/fixtures/01-valid-oept-pass/package-trust-keys.json"
+  },
+  "note": ""
+}

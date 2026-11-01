@@ -1,0 +1,12 @@
+{
+  "vector_id": "12-pack-signature-invalid",
+  "action": "pack_verify",
+  "status": "active",
+  "spec": "OEVP-1.0-draft",
+  "source_fixture": "conformance/fixtures/12-pack-signature-invalid",
+  "inputs": {
+    "pack": "conformance/fixtures/12-pack-signature-invalid/pack",
+    "pack_verifier_keys": "conformance/fixtures/12-pack-signature-invalid/verifier-keys.json"
+  },
+  "note": "A present-but-corrupt signature is SIGNATURE_INVALID — never valid, and never confused with an unsigned pack (fixture 11). Member integrity is unaffected, so the pack verdict stays PACK_VALID while the trust decision is reported honestly."
+}

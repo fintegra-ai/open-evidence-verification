@@ -1,0 +1,8 @@
+{
+  "vector_id": "11-pack-signature-not-present",
+  "exit_code": 0,
+  "asserts": {
+    "overall": "PACK_VALID",
+    "signature_state": "SIGNATURE_NOT_PRESENT"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "vector_id": "04-tampered-receipt",
+  "exit_code": 1,
+  "asserts": {
+    "receipt_digest_valid": false,
+    "crypto_valid": false,
+    "is_trusted_signer": false
+  }
+}
