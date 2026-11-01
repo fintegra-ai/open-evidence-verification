@@ -6,7 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [Unreleased]
+## [0.2.1] - 2026-11-01
+
+### Fixed
+
+- **Re-verification of a tampered receipt no longer reports `MATCH`.** When the
+  historical receipt's self-digest does not verify, `oev reverify` now fails
+  closed with `MISMATCH` (CLI exit code 2) instead of recording the failure in
+  `notes` and continuing — previously a receipt with an edited field (e.g. a
+  replaced `receipt_id`) and a stale `receipt_digest` could still produce
+  `MATCH` with exit code 0 if all other checks happened to agree.
+- CLI: schema-invalid or unparseable JSON inputs (e.g. a malformed receipt or
+  profile) now fail with a clean `Error: ...` message and exit code 1 instead
+  of an unhandled traceback.
+
+### Changed
+
+- The optional `oept` extra now depends on the `oept` distribution (OEPT's
+  actual PyPI/dist name), not the non-existent `open-evidence-provenance` name.
+- `oev reverify` human output and the README now state explicitly that
+  re-verification establishes reproducibility, not receipt authenticity;
+  `oev receipt verify` with caller-pinned verifier keys remains the
+  authenticity check.
+
+### Added
+
+- CI: a dedicated OEPT integration job that installs OEPT from the sibling
+  repository and asserts the adapter is importable, so the previously
+  auto-skipped adapter/CLI/conformance tests execute on every run.
 
 ## [0.2.0] - 2026-10-26
 

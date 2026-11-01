@@ -35,3 +35,32 @@ jobs:
 
       - name: Test (pytest)
         run: pytest
+
+  integration:
+    # Without OEPT installed, the adapter/conformance tests skip silently and
+    # green CI proves nothing about OEVP+OEPT interop. This job installs OEPT
+    # and asserts the adapter is importable so the OEPT-dependent tests
+    # execute instead of skip.
+    name: OEPT integration (adapter + CLI + conformance enforced)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install OEVP with dev tools
+        run: python -m pip install -e ".[dev]"
+
+      - name: Install OEPT (sibling repository, pinned snapshot)
+        # Bump to the latest OEPT tag/release when one is published to PyPI
+        # or tagged upstream.
+        run: python -m pip install "oept @ git+https://github.com/fintegra-ai/open-evidence-provenance.git@fec8f92ff98c2eaebb5c01ac178459f79c119e9b"
+
+      - name: Assert OEPT adapter is importable (no silent skips)
+        run: python -c "from oev.adapters.oept import is_oept_available; assert is_oept_available(), 'OEPT must be importable for this job'"
+
+      - name: Test (pytest, full suite with OEPT present)
+        run: pytest -rs

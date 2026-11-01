@@ -62,13 +62,32 @@ def reverify_package(
     receipt = _extract_receipt(receipt_source)
     is_digest_valid, _declared_digest, _ = verify_receipt_digest(receipt)
 
+    notes: list[str] = []
+    if not is_digest_valid:
+        # Fail closed: a receipt whose self-digest does not verify has been
+        # altered since issuance, so every value recorded in it — including
+        # the package and profile digests and the recorded check statuses —
+        # is untrusted. Comparing fresh results against attacker-chosen
+        # values could lend unearned credibility to a tampered receipt, so
+        # re-verification terminates here (mirrors the terminal
+        # RECEIPT_INVALID handling for pack verification receipts).
+        notes.append("Historical receipt self-digest verification failed (tampered receipt)")
+        report = ReverificationReport(
+            protocol_version="oev-reverification/0.1",
+            receipt_digest=receipt.receipt_digest,
+            package_digest_match=False,
+            profile_digest_match=False,
+            fresh_checks=[],
+            check_differences=[],
+            reverification_result="MISMATCH",
+            notes=notes,
+        )
+        validate_document(report.to_dict(), REVERIFICATION_SCHEMA_NAME)
+        return report
+
     # 1. Package digest check
     actual_package_digest = sha256_bytes(package_bytes)
     package_digest_match = actual_package_digest == receipt.package.digest
-
-    notes: list[str] = []
-    if not is_digest_valid:
-        notes.append("Historical receipt self-digest verification failed (tampered receipt)")
 
     if not package_digest_match:
         notes.append(

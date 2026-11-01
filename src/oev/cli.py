@@ -182,6 +182,10 @@ def cmd_reverify(args: argparse.Namespace) -> int:
                 print(f"  * {n}")
         print("=" * 70)
         print(f"{NOTICE_FOOTER}")
+        print(
+            "Re-verification establishes reproducibility, not receipt authenticity;\n"
+            "verify the receipt signer separately with 'oev receipt verify'."
+        )
 
     return 0 if report.reverification_result == "MATCH" else 2
 
@@ -562,7 +566,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    return args.func(args)  # type: ignore[no-any-return]
+    try:
+        return args.func(args)  # type: ignore[no-any-return]
+    except ValueError as exc:
+        # Schema-invalid or otherwise unparseable JSON input (receipt, profile,
+        # trust keys) must fail closed with a clean message, not a traceback.
+        # SchemaValidationError and JSON decode errors are ValueError subclasses.
+        sys.stderr.write(f"Error: {exc}\n")
+        return 1
 
 
 if __name__ == "__main__":

@@ -360,6 +360,12 @@ OEVP strictly separates two operational procedures:
   applicable checks, diffs fresh check results against the historical receipt, and
   reports whether the appraisal is reproducible.
 
+Re-verification establishes that the recorded appraisal is **reproducible** for the
+supplied package and profile. It does **not** establish who issued the receipt: an
+attacker who rewrites the payload, recomputes the self-digest, and re-signs with
+their own key produces an internally consistent receipt. Receipt authenticity is a
+separate check — `oev receipt verify` against caller-pinned verifier keys.
+
 ### Relationship to OEPT
 
 **OEPT (Open Evidence Provenance Toolkit)** is a separate, sibling open-source project

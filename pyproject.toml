@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "oev"
-version = "0.2.0"
+version = "0.2.1"
 description = "Open Evidence Verification Protocol (OEVP) - Vendor-neutral evidence appraisal, verification profiles, portable receipts, and decision evidence packs"
 readme = "README.md"
 license = "Apache-2.0"
@@ -33,7 +33,9 @@ dependencies = [
 
 [project.optional-dependencies]
 oept = [
-    "open-evidence-provenance",
+    # Must match OEPT's distribution name on PyPI (see open-evidence-provenance
+    # pyproject.toml: name = "oept"); the import name and dist name agree.
+    "oept>=0.1.0",
 ]
 dev = [
     "pytest>=7.4.0",
