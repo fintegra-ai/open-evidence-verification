@@ -23,7 +23,7 @@ PACKAGE + VERIFICATION PROFILE + CALLER TRUST INPUTS
 
 | | |
 | :--- | :--- |
-| Package | [`oev`](pyproject.toml) — Python ≥ 3.10, Apache-2.0 |
+| Package | [`open-evidence-verification`](pyproject.toml) (import/CLI: `oev`) — Python ≥ 3.10, Apache-2.0 |
 | Protocol drafts | [`spec/`](spec/) — `oev-profile/0.1`, `oev-receipt/0.1`, `oev-reverification/0.1` |
 | Conformance kit | [`conformance/`](conformance/README.md) |
 | Security policy | [SECURITY.md](SECURITY.md) |
@@ -122,11 +122,10 @@ pip install .
 pip install -e ".[dev]"
 ```
 
-> **Optional OEPT adapter:** `pip install ".[oept]"` enables evaluation of OEPT bundles.
-> The OEPT package ([Open Evidence Provenance Toolkit](#relationship-to-oept)) is a
-> sibling project that is **not yet published to PyPI**; until it is, install OEPT from
-> its own repository. Without it, the OEVP core still runs everything except
-> OEPT-specific package checks — including all receipt inspection commands below.
+> **Optional OEPT adapter:** `pip install "open-evidence-verification[oept]"`
+> installs the published OEPT package from PyPI. For a source checkout, use
+> `pip install ".[oept]"`. Without this extra, receipt inspection works, while
+> OEPT-specific package checks require the adapter dependency.
 
 ## Quickstart
 

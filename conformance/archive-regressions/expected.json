@@ -1,0 +1,20 @@
+{
+  "format": "oev-archive-regressions/0.1",
+  "cases": [
+    {
+      "archive": "late-crc.zip",
+      "error": "PackArchiveError",
+      "destination_created": false
+    },
+    {
+      "archive": "empty-segment.zip",
+      "error": "PackArchiveError",
+      "destination_created": false
+    },
+    {
+      "archive": "path-collision.zip",
+      "error": "PackArchiveError",
+      "destination_created": false
+    }
+  ]
+}

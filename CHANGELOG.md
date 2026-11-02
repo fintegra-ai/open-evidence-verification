@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Validate and stage every archive member before extraction; reject path aliases,
+  file/directory collisions, symlink entries, and existing destination files.
+  Permanent hostile archive vectors cover late CRC failures and path collisions.
+- Release verification removes an unsupported `oev verify --json` option and
+  uses an explicit unsigned-integrity profile, and runs for relevant source
+  changes as well as releases/manual dispatch.
+- Correct published package status and distinguish project-internal language
+  implementations from independent external implementers in the evidence dossier.
+
+
 ### Changed
 
 - Distribution name changed from `oev` to `open-evidence-verification` (PyPI name taken by an unrelated project). Import package `oev` and CLI `oev` are unchanged; install with `pip install open-evidence-verification[oept]` for the OEPT adapter.

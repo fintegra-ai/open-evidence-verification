@@ -11,9 +11,9 @@
 | Claim | Link / evidence |
 | :--- | :--- |
 | Normative specs, code-independent (RFC 2119 drafts) | open-evidence-verification `spec/OEVP-1.0-draft.md`; open-evidence-provenance `spec/OEPT-1.0-draft.md` |
-| Conformance: language-independent vectors + runner | OEVP `conformance/vectors/` (v0.1.0) + `conformance/run_vectors.py`; standalone package `oev-conformance-vectors` 0.1.0 (local, publication pending owner push) |
-| Conformance: reference passes everything | OEVP suite 153 passed; OEPT corpus 10/10; runner exit 0 (12 active vectors) |
-| **Second implementer** (the NLnet requirement most projects fail) | `fintegra-ai/open-evidence-verifier-ts` — **12/12 vector parity** with the Python reference, stdlib-only, ambiguity log A-001 |
+| Conformance: language-independent vectors + runner | OEVP `conformance/vectors/` (v0.1.0) + `conformance/run_vectors.py`; standalone package [`oev-conformance-vectors` 0.1.0](https://pypi.org/project/oev-conformance-vectors/0.1.0/) (published) |
+| Conformance: reference passes everything | Baseline OEVP suite 153 passed (2026-11-01); current rerun in `docs/CLOSURE_STATUS_2026-11-02.md`; OEPT corpus 10/10; runner exit 0 (12 active vectors) |
+| **Second implementation** (project-internal, not external adoption) | `fintegra-ai/open-evidence-verifier-ts` — **12/12 vector parity** with the Python reference, stdlib-only, ambiguity log A-001 |
 | Public PyPI packages | `open-evidence-verification 0.2.1`, `oept 0.1.1` (pypi.org) |
 | Threat model | both repos, `spec/threat-model.md` |
 | Security process | OEPT `SECURITY.md`; gitleaks full-history CI in both repos (checksum-pinned) |
@@ -34,17 +34,22 @@ governance, boundary/security tooling, PyPI releases.
 2. Deterministic rule replay engine (today the core deliberately does NOT
    re-execute rules; replay is digest/pinning only).
 3. Browser verifier release (same core as the TS verifier; slice planned in
-   `spec/faz-d-ts-verifier-plan.md`) + npm publication.
+   `spec/faz-d-ts-verifier-plan.md`) (npm 0.1.0 already published; browser delivery remains future work).
 4. Rust third implementation (plan D+ second priority).
 5. Independent security audit + closure of findings (separate budget line).
-6. Interop table + public docs site + external-pilot onboarding.
+6. Public docs site + external-pilot onboarding (interop table already exists).
 
-## 3. Pending owner decisions (gating the filing)
+## 3. Remaining owner / external steps
 
-- Kapı C 4/4 final step: publish `oev-conformance-vectors` to PyPI (package
-  built, twine-clean; push is the owner's action).
-- TS verifier: npm name + publication (repo is now public at
-  github.com/fintegra-ai/open-evidence-verifier-ts).
-- Profiles 1–5 registration pace.
-- Second maintainer (GOVERNANCE requires it before accepting funds).
-- Pilots: 1–3 nameable external projects (cannot be invented).
+- PyPI credential rotation: separate project-scoped tokens for `oept` and
+  `open-evidence-verification`, successful project-scoped uploads, then revoke
+  the account-wide token. Pending verification; not an application blocker.
+- Second maintainer: required by this project's GOVERNANCE before funding
+  intake; do not count an automated agent as a second human maintainer.
+- External implementers / pilots: 0 recorded; do not invent participants.
+- Human-written application prose remains the applicant's task.
+- Profiles 1–5 stay draft until adapters and domain vectors exist.
+
+Vector publication and npm publication are complete and no longer pending.
+See `docs/CLOSURE_STATUS_2026-11-02.md` for the technical freeze and remaining
+steps. These are project gates, not asserted NLnet eligibility rules.

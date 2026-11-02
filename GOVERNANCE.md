@@ -51,7 +51,7 @@ ver"). Amendments follow §2.
 | :--- | :--- | :--- |
 | GitHub repositories | under `fintegra-ai` org ✓ | second admin added |
 | PyPI `open-evidence-verification`, `oept` | single-owner publishing | add a second Owner or use Trusted Publishing from the org with two maintainers enabled |
-| npm (future, Faz D) | n/a | publish via CI (Trusted Publishing), no personal tokens |
+| npm `oept-verifier-ts` | 0.1.0 published, single-maintainer | publish via CI (Trusted Publishing), no personal tokens |
 | Domain (if any) | n/a | registrar account shared or org-owned |
 | Decision records | GOVERNANCE.md + METRICS.md | kept in-repo, never private |
 

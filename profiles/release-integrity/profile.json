@@ -1,0 +1,9 @@
+{
+  "profile_id": "release-evidence-integrity",
+  "profile_version": "0.1.0",
+  "protocol_version": "oev-profile/0.1",
+  "description": "Integrity of unsigned CI-generated conformance evidence. Does not establish publisher identity.",
+  "required_checks": ["archive_safety", "manifest_structure", "member_digests"],
+  "optional_checks": [],
+  "target_format": "oept-bundle/0.1"
+}

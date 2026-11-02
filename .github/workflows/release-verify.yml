@@ -4,6 +4,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["src/**", "conformance/**", "profiles/**", "pyproject.toml", ".github/workflows/release-verify.yml"]
+  pull_request:
+    paths: ["src/**", "conformance/**", "profiles/**", "pyproject.toml", ".github/workflows/release-verify.yml"]
 
 # Faz G: every release produces its own verification evidence. Build the
 # distributions, check metadata, run the conformance vector set with the
@@ -44,7 +49,7 @@ jobs:
           python -c "
           import json, sys
           from oev.cli import main
-          rc = main(['verify', 'evidence.oeptbundle.zip', '--profile', 'profiles/finance-demo-neutral/profile.json', '--json'])
+          rc = main(['verify', 'evidence.oeptbundle.zip', '--profile', 'profiles/release-integrity/profile.json'])
           assert rc == 0, 'evidence pack failed verification'
           print('evidence pack verified: TECHNICAL_CHECKS_PASSED')"
 

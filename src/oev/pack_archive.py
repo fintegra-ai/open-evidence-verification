@@ -22,7 +22,10 @@ directory; extraction safety and pack integrity are independent properties.
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 import zipfile
+import zlib
 from pathlib import Path, PurePosixPath
 
 MAX_ARCHIVE_ENTRIES = 10_000
@@ -41,14 +44,16 @@ class PackArchiveError(ValueError):
 
 def _validate_entry_name(name: str) -> None:
     """Reject entry names that could escape the extraction root."""
-    if not name:
+    if not name or "\x00" in name:
         raise PackArchiveError("Archive contains an empty entry name")
     if any(ch in ENTRY_NAME_FORBIDDEN_CHARS for ch in name):
         raise PackArchiveError(f"Archive entry uses a forbidden character: {name!r}")
     pure = PurePosixPath(name)
     if pure.is_absolute() or name.startswith("/"):
         raise PackArchiveError(f"Archive entry has an absolute path: {name!r}")
-    parts = name.split("/")
+    parts = name.rstrip("/").split("/")
+    if "" in parts:
+        raise PackArchiveError(f"Archive entry has an empty path segment: {name!r}")
     if ".." in parts or "." in parts:
         raise PackArchiveError(f"Archive entry traverses outside the root: {name!r}")
 
@@ -65,7 +70,10 @@ def create_pack_archive(pack_dir: str | Path, zip_path: str | Path) -> list[str]
     if not pack_dir.is_dir():
         raise PackArchiveError(f"Pack directory not found: {pack_dir}")
 
-    files = sorted(p for p in pack_dir.rglob("*") if p.is_file())
+    paths = sorted(pack_dir.rglob("*"))
+    if any(p.is_symlink() for p in paths):
+        raise PackArchiveError("Pack contains a symlink")
+    files = [p for p in paths if p.is_file()]
     if not files:
         raise PackArchiveError(f"Pack directory contains no files: {pack_dir}")
     if len(files) > MAX_ARCHIVE_ENTRIES:
@@ -124,6 +132,9 @@ def inspect_pack_archive(zip_path: str | Path) -> list[str]:
     total = 0
     for info in infos:
         name = info.filename
+        _validate_entry_name(info.orig_filename)
+        if (info.external_attr >> 16) & 0o170000 == 0o120000:
+            raise PackArchiveError(f"Archive contains a symlink: {name!r}")
         _validate_entry_name(name)
         seen[name] = seen.get(name, 0) + 1
         if seen[name] > 1:
@@ -151,19 +162,53 @@ def extract_pack_archive(zip_path: str | Path, out_dir: str | Path) -> list[str]
 
     out_dir = Path(out_dir)
     entries = inspect_pack_archive(zip_path)
-
-    out_dir.mkdir(parents=True, exist_ok=True)
     root = out_dir.resolve()
-    extracted: list[str] = []
-    with zipfile.ZipFile(Path(zip_path), "r") as zf:
-        for name in entries:
-            target = (out_dir / name).resolve()
-            if root != target and root not in target.parents:
-                raise PackArchiveError(f"Resolved path escapes the extraction root: {name!r}")
-            data: bytes = zf.read(name)
-            if len(data) > MAX_ENTRY_UNCOMPRESSED_BYTES:
-                raise PackArchiveError(f"Decompressed entry exceeds the size bound: {name!r}")
+    if out_dir.is_symlink():
+        raise PackArchiveError("Extraction root must not be a symlink")
+    # Check every destination before writes; normalized aliases and file/directory
+    # collisions must not overwrite content or leave a partial extraction.
+    targets: list[Path] = []
+    for name in entries:
+        target = out_dir / name
+        resolved = target.resolve()
+        if root not in resolved.parents:
+            raise PackArchiveError(f"Resolved path escapes the extraction root: {name!r}")
+        if target.exists() or target.is_symlink():
+            raise PackArchiveError(f"Extraction target already exists: {name!r}")
+        for parent in target.parents:
+            if parent == out_dir.parent:
+                break
+            if parent.is_symlink() or (parent.exists() and not parent.is_dir()):
+                raise PackArchiveError(f"Unsafe extraction parent: {name!r}")
+        targets.append(target)
+    target_set = set(targets)
+    if any(parent in target_set for target in targets for parent in target.parents):
+        raise PackArchiveError("Archive contains a file/directory path collision")
+
+    # Decompress every member into private staging before touching the target.
+    # A corrupt late member (CRC/compression error) must leave no earlier files.
+    with tempfile.TemporaryDirectory(prefix="oev-unpack-") as staging:
+        stage = Path(staging)
+        try:
+            with zipfile.ZipFile(Path(zip_path), "r") as zf:
+                for name in entries:
+                    body = zf.read(name)
+                    if len(body) > MAX_ENTRY_UNCOMPRESSED_BYTES:
+                        raise PackArchiveError(f"Decompressed entry exceeds size bound: {name!r}")
+                    staged = stage / name
+                    staged.parent.mkdir(parents=True, exist_ok=True)
+                    staged.write_bytes(body)
+        except (
+            zipfile.BadZipFile,
+            RuntimeError,
+            NotImplementedError,
+            zlib.error,
+            EOFError,
+            UnicodeError,
+        ) as exc:
+            raise PackArchiveError(f"Archive content is unreadable: {exc}") from exc
+        for name, target in zip(entries, targets):
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(data)
-            extracted.append(name)
-    return extracted
+            with target.open("xb") as handle, (stage / name).open("rb") as source:
+                shutil.copyfileobj(source, handle)
+    return entries

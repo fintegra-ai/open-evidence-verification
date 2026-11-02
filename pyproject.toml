@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "open-evidence-verification"
-version = "0.2.1"
+version = "0.2.2"
 description = "Open Evidence Verification Protocol (OEVP) - Vendor-neutral evidence appraisal, verification profiles, portable receipts, and decision evidence packs"
 readme = "README.md"
 license = "Apache-2.0"
