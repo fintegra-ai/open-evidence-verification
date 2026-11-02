@@ -13,7 +13,7 @@ baseline (2026-11-01) and is the seed for the public metrics page (Kapı J).
 | External merged contributions | 0 | GitHub PRs to `fintegra-ai/*` are project-internal so far |
 | Public pilot packages | 0 | none published |
 | Failed interop attempts (recorded) | 0 — interop table is live and accepts external submissions | docs/interop-table.md |
-| PyPI releases | `open-evidence-verification 0.2.2`, `oept 0.1.2`, `oev-conformance-vectors 0.1.0` | pypi.org JSON API, 2026-11-01 |
+| PyPI releases | `open-evidence-verification 0.2.3`, `oept 0.1.3`, `oev-conformance-vectors 0.1.0` | pypi.org JSON API, 2026-11-01 |
 | npm releases | **1** — `oept-verifier-ts 0.1.0` (published 2026-11-01, maintainer fintegraai) | registry.npmjs.org/oept-verifier-ts |
 | Profiles total | 6 — 1 registered (Profile 0) + 5 draft (domain adapters/vectors are funded-work) | profiles/registry.json |
 | Interop table | published with 2 entries (both project-internal; external submissions open) | docs/interop-table.md |
@@ -108,10 +108,19 @@ or private claims.
   distribution hashes verified. The account owner confirmed old account-token
   revocation after project-scoped uploads. Project credentials persist in
   macOS Keychain; no token values are recorded here.
-- Second-review source candidates: OEPT 0.1.3 and OEVP 0.2.3, not yet published.
+- Second-review releases: OEPT 0.1.3 and OEVP 0.2.3 published and all four distribution hashes verified.
   OEPT 101 tests; OEVP 176 tests with the adapter; lint/format/strict mypy pass.
   Findings and final evidence are in docs/SECOND_REVIEW_2026-11-02.md.
 - The registry now has six unique entries (one registered, five draft),
   removing a duplicate Profile 0. No draft profile is promoted by this review.
 - External implementers/pilots and second human maintainer remain unchanged;
   this review does not invent contributors, partnerships, or an application.
+
+## Main and publication closure — 2026-11-02
+
+Owner explicitly approved direct main integration and [skip ci] for this
+closure. Both reviewed branches are on main. OEPT 0.1.3 and OEVP 0.2.3
+were uploaded using persistent project-scoped Keychain credentials; wheel
+and sdist SHA-256 values match the reviewed candidates. No new Actions run
+was required for this approved integration. Existing CI remains configured.
+Known pre-grant GenAI contributions are disclosed in AI_PROVENANCE.md.

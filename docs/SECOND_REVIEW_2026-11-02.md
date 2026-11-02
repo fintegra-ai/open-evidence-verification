@@ -50,7 +50,7 @@ PACK_INVALID; the attack remains refused.
 - Project-scoped credentials persist in macOS Keychain. The account owner
   confirmed old account-wide token revocation on 2026-11-02. No credential
   values belong in this repository.
-- OEPT 0.1.3 / OEVP 0.2.3 are follow-up source candidates. Final wheel/sdist,
+- OEPT 0.1.3 / OEVP 0.2.3 are published releases. Final wheel/sdist,
   installed-artifact, dependency-audit, and conformance evidence is delivered
   in the owner-side review artifact directory, separate from credentials.
 - This is an internal engineering review, not an independent security audit
@@ -64,9 +64,8 @@ human-written NLnet application are not fabricated or marked complete.
 Private deployment rotation records are independent of PyPI credential
 rotation and remain owner-side obligations.
 
-Both repositories' reviewed source branches await main integration. The
-GitHub connector cannot create PRs (HTTP 403), and the browser is signed out.
-A prior attempt at direct main integration with [skip ci] was rejected by
-automatic approval review; it has not been retried through a workaround.
-The owner must explicitly authorize that exact integration or restore PR
-creation access. Local checks are batched to avoid unnecessary Actions runs.
+Both reviewed branches were integrated into main after the owner explicitly
+authorized direct integration with [skip ci]. OEPT 0.1.3 and OEVP 0.2.3
+were published with stored project credentials and all artifact hashes
+verified. The earlier automatic-review restriction is resolved by that
+explicit authorization; no protection setting was changed.

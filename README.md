@@ -418,3 +418,11 @@ landed):
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+## Generative AI provenance
+
+The pre-grant baseline includes substantive AI-generated implementation
+changes, tests, security fixes, and documentation produced using OpenAI
+Codex under the project owner's direction. Passing automated checks does
+not establish human authorship. See [AI_PROVENANCE.md](AI_PROVENANCE.md)
+for known contribution records and the limits of this disclosure.

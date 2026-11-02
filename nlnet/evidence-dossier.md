@@ -12,9 +12,9 @@
 | :--- | :--- |
 | Normative specs, code-independent (RFC 2119 drafts) | open-evidence-verification `spec/OEVP-1.0-draft.md`; open-evidence-provenance `spec/OEPT-1.0-draft.md` |
 | Conformance: language-independent vectors + runner | OEVP `conformance/vectors/` (v0.1.0) + `conformance/run_vectors.py`; standalone package [`oev-conformance-vectors` 0.1.0](https://pypi.org/project/oev-conformance-vectors/0.1.0/) (published) |
-| Conformance: reference passes everything | Baseline OEVP suite 153 passed (2026-11-01); current rerun in `docs/CLOSURE_STATUS_2026-11-02.md`; OEPT corpus 10/10; runner exit 0 (12 active vectors) |
+| Conformance: reference passes everything | Baseline OEVP suite 153 passed (2026-11-01); current rerun in `docs/CLOSURE_STATUS_2026-11-02.md`; OEPT corpus 15/15; runner exit 0 (12 active vectors) |
 | **Second implementation** (project-internal, not external adoption) | `fintegra-ai/open-evidence-verifier-ts` — **12/12 vector parity** with the Python reference, stdlib-only, ambiguity log A-001 |
-| Public PyPI packages | `open-evidence-verification 0.2.2`, `oept 0.1.2` (pypi.org) |
+| Public PyPI packages | `open-evidence-verification 0.2.3`, `oept 0.1.3` (pypi.org) |
 | Threat model | both repos, `spec/threat-model.md` |
 | Security process | OEPT `SECURITY.md`; gitleaks full-history CI in both repos (checksum-pinned) |
 | Governance | `GOVERNANCE.md` (DCO, CC-BY-4.0 spec license, conformance-brand rule, no-funding-before-second-maintainer) |
