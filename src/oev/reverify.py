@@ -9,7 +9,8 @@ from typing import Any
 
 from oev.adapters import get_adapter_for_format, get_adapter_for_package
 from oev.canonical import safe_json_loads
-from oev.dsse import parse_dsse_envelope
+from oev.dsse import DEFAULT_PAYLOAD_TYPE, DsseError, parse_dsse_envelope
+from oev.fileio import read_bounded_file
 from oev.hashing import sha256_bytes
 from oev.models import (
     ReverificationReport,
@@ -18,7 +19,7 @@ from oev.models import (
     VerificationReceipt,
 )
 from oev.profiles import compute_profile_digest, load_profile
-from oev.receipts import load_receipt, verify_receipt_digest
+from oev.receipts import aggregate_overall_result, load_receipt, verify_receipt_digest
 from oev.schemas import validate_document
 
 REVERIFICATION_SCHEMA_NAME = "reverification-report.schema.json"
@@ -27,8 +28,7 @@ REVERIFICATION_SCHEMA_NAME = "reverification-report.schema.json"
 def _extract_receipt(source: str | Path | dict[str, Any]) -> VerificationReceipt:
     """Load VerificationReceipt, unwrapping DSSE envelope if present."""
     if isinstance(source, (str, Path)):
-        with open(source, "r", encoding="utf-8") as f:
-            content = f.read()
+        content = read_bounded_file(source)
         data = safe_json_loads(content)
     elif isinstance(source, dict):
         data = source
@@ -36,7 +36,9 @@ def _extract_receipt(source: str | Path | dict[str, Any]) -> VerificationReceipt
         raise TypeError(f"Expected path or dict, got {type(source).__name__}")
 
     if "payloadType" in data and "payload" in data and "signatures" in data:
-        _, payload_bytes, _ = parse_dsse_envelope(data)
+        payload_type, payload_bytes, _ = parse_dsse_envelope(data)
+        if payload_type != DEFAULT_PAYLOAD_TYPE:
+            raise DsseError("Unexpected DSSE payloadType for an OEVP receipt")
         receipt_dict = safe_json_loads(payload_bytes.decode("utf-8"))
     else:
         receipt_dict = data
@@ -207,9 +209,9 @@ def reverify_package(
                     }
                 )
 
-    # 4b. Check for required checks missing from historical receipt
+    # 4b. Every profile check, required or optional, must be represented.
     hist_by_id = {c.check_id: c for c in receipt.checks}
-    for req_id in profile.required_checks:
+    for req_id in dict.fromkeys(profile.required_checks + profile.optional_checks):
         if req_id not in hist_by_id:
             fresh_c = fresh_by_id.get(req_id)
             fresh_status_str = (
@@ -222,9 +224,35 @@ def reverify_package(
                     "check_id": req_id,
                     "historical_status": "MISSING_FROM_RECEIPT",
                     "fresh_status": fresh_status_str,
-                    "note": f"Required check '{req_id}' was absent from the historical receipt",
+                    "note": f"Profile check '{req_id}' was absent from the historical receipt",
                 }
             )
+
+    recorded_trust = sorted((k.trust_id, k.type, k.digest) for k in receipt.trust_inputs)
+    supplied_trust = sorted((k.trust_id, k.type, k.digest) for k in trust_inputs)
+    if recorded_trust != supplied_trust:
+        differences.append(
+            {
+                "check_id": "trust_inputs",
+                "historical_status": "RECORDED",
+                "fresh_status": "CHANGED",
+                "note": "Caller trust inputs differ from the content-bound historical inputs",
+            }
+        )
+    fresh_overall = aggregate_overall_result(
+        profile.required_checks, profile.optional_checks, fresh_checks, receipt.limitations
+    )
+    if fresh_overall != receipt.overall_result:
+        differences.append(
+            {
+                "check_id": "overall_result",
+                "historical_status": getattr(
+                    receipt.overall_result, "value", receipt.overall_result
+                ),
+                "fresh_status": fresh_overall.value,
+                "note": "Recorded overall result does not reproduce from fresh checks",
+            }
+        )
 
     reverification_result = "MATCH" if len(differences) == 0 else "MISMATCH"
 

@@ -55,7 +55,7 @@ jobs:
         run: python -m pip install -e ".[dev]"
 
       - name: Install OEPT (published distribution, pinned release)
-        run: python -m pip install "oept==0.1.1"
+        run: python -m pip install "oept==0.1.2"
 
       - name: Assert OEPT adapter is importable (no silent skips)
         run: python -c "from oev.adapters.oept import is_oept_available; assert is_oept_available(), 'OEPT must be importable for this job'"

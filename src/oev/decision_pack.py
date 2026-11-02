@@ -45,6 +45,7 @@ from oev.decision_models import (
     PackVerificationResult,
 )
 from oev.dsse import compute_pae
+from oev.fileio import MAX_PACK_MEMBER_BYTES, pack_member_path, read_bounded_file
 from oev.hashing import sha256_bytes
 from oev.pack_verifier import (
     MANIFEST_SCHEMA_NAME,
@@ -201,19 +202,22 @@ def write_pack(out_dir: Path, manifest: PackManifest, bodies: dict[str, bytes]) 
         body = bodies.get(member.path)
         if body is None:
             raise DecisionPackError(f"Missing prepared body for member '{member.path}'")
-        target = out_dir / member.path
+        _validate_member_path(member.path, member.role)
+        target = pack_member_path(out_dir, member.path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(body)
-    (out_dir / MANIFEST_MEMBER_PATH).write_bytes(canonicalize_json(manifest.to_dict(True)))
+    pack_member_path(out_dir, MANIFEST_MEMBER_PATH).write_bytes(
+        canonicalize_json(manifest.to_dict(True))
+    )
 
 
 def _load_core_member(src_dir: Path, role: str) -> tuple[Any, bytes]:
     """Read, parse, and schema-validate one core JSON member from a source directory."""
-    path = src_dir / CORE_MEMBER_ROLES[role]
+    path = pack_member_path(src_dir, CORE_MEMBER_ROLES[role])
     if not path.is_file():
         raise DecisionPackError(f"Missing core member file: {path}")
     try:
-        data = safe_json_loads(path.read_bytes())
+        data = safe_json_loads(read_bounded_file(path))
     except ValueError as exc:
         raise DecisionPackError(
             f"Core member '{CORE_MEMBER_ROLES[role]}' is not valid JSON: {exc}"
@@ -261,11 +265,15 @@ def collect_source_members(src_dir: Path) -> tuple[str, list[MemberInput]]:
             )
         )
 
-    artifacts_root = src_dir / "artifacts"
+    artifacts_root = pack_member_path(src_dir, "artifacts")
     if artifacts_root.is_dir():
-        for file_path in sorted(p for p in artifacts_root.rglob("*") if p.is_file()):
+        for file_path in sorted(artifacts_root.rglob("*")):
+            if file_path.is_symlink():
+                raise DecisionPackError("Symlink in artifact source")
+            if file_path.is_dir():
+                continue
             rel = file_path.relative_to(src_dir).as_posix()
-            body = file_path.read_bytes()
+            body = read_bounded_file(pack_member_path(src_dir, rel), MAX_PACK_MEMBER_BYTES)
             if len(body) > MAX_ARTIFACT_BYTES:
                 raise DecisionPackError(
                     f"Artifact '{rel}' exceeds maximum size ({len(body)} > {MAX_ARTIFACT_BYTES})"
@@ -310,7 +318,7 @@ def build_pack(
 def load_manifest(source: str | Path | dict[str, Any]) -> PackManifest:
     """Load and schema-validate a manifest from file path or dictionary."""
     if isinstance(source, (str, Path)):
-        raw = Path(source).read_bytes()
+        raw = read_bounded_file(source)
         data = safe_json_loads(raw)
     elif isinstance(source, dict):
         data = source
@@ -380,7 +388,7 @@ def sign_pack_manifest(
     requires caller-supplied roots.
     """
     pack_dir = Path(pack_dir)
-    manifest_bytes = (pack_dir / MANIFEST_MEMBER_PATH).read_bytes()
+    manifest_bytes = read_bounded_file(pack_member_path(pack_dir, MANIFEST_MEMBER_PATH))
     parsed = safe_json_loads(manifest_bytes)
     if canonicalize_json(parsed) != manifest_bytes:
         raise DecisionPackError(

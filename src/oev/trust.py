@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from .canonical import safe_json_loads
+from .fileio import read_bounded_file
 from .hashing import sha256_bytes
 from .signing import (
     load_ed25519_public_key,
@@ -81,8 +82,7 @@ class TrustStore:
 
     @classmethod
     def from_file(cls, path: str | Path) -> TrustStore:
-        with open(path, "r", encoding="utf-8") as f:
-            content = f.read()
+        content = read_bounded_file(path)
         data = safe_json_loads(content)
         if not isinstance(data, list):
             raise TypeError("Trust file must be a JSON array of key objects")

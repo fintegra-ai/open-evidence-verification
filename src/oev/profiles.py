@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .canonical import canonicalize_json, safe_json_loads
+from .fileio import read_bounded_file
 from .hashing import sha256_bytes
 from .models import VerificationProfile
 from .schemas import validate_document
@@ -25,8 +26,7 @@ def compute_profile_digest(profile_data: dict[str, Any] | VerificationProfile) -
 def load_profile(source: str | Path | dict[str, Any]) -> VerificationProfile:
     """Load, validate, and instantiate a VerificationProfile from file path or dictionary."""
     if isinstance(source, (str, Path)):
-        with open(source, "r", encoding="utf-8") as f:
-            content = f.read()
+        content = read_bounded_file(source)
         data = safe_json_loads(content)
     elif isinstance(source, dict):
         data = source

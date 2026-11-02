@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+import unicodedata
 import zipfile
 import zlib
 from pathlib import Path, PurePosixPath
@@ -128,6 +129,7 @@ def inspect_pack_archive(zip_path: str | Path) -> list[str]:
         )
 
     seen: dict[str, int] = {}
+    portable_names: set[str] = set()
     file_entries: list[str] = []
     total = 0
     for info in infos:
@@ -136,6 +138,10 @@ def inspect_pack_archive(zip_path: str | Path) -> list[str]:
         if (info.external_attr >> 16) & 0o170000 == 0o120000:
             raise PackArchiveError(f"Archive contains a symlink: {name!r}")
         _validate_entry_name(name)
+        portable = unicodedata.normalize("NFC", name.rstrip("/")).casefold()
+        if portable in portable_names:
+            raise PackArchiveError(f"Archive contains duplicate entry name: {name!r}")
+        portable_names.add(portable)
         seen[name] = seen.get(name, 0) + 1
         if seen[name] > 1:
             raise PackArchiveError(f"Archive contains duplicate entry name: {name!r}")
@@ -149,6 +155,12 @@ def inspect_pack_archive(zip_path: str | Path) -> list[str]:
         if total > MAX_TOTAL_UNCOMPRESSED_BYTES:
             raise PackArchiveError("Archive total uncompressed size exceeds the bound")
         file_entries.append(name)
+    portable_files = {unicodedata.normalize("NFC", name).casefold() for name in file_entries}
+    for name in portable_files:
+        if any(
+            "/".join(name.split("/")[:i]) in portable_files for i in range(1, len(name.split("/")))
+        ):
+            raise PackArchiveError("Archive contains a file/directory path collision")
     return file_entries
 
 

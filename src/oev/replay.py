@@ -34,6 +34,7 @@ from oev.decision_models import (
     MANIFEST_MEMBER_PATH,
 )
 from oev.decision_pack import verify_pack
+from oev.fileio import pack_member_path, read_bounded_file
 from oev.trust import TrustStore
 
 ISO_UTC_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -185,9 +186,9 @@ class SnapshotReplayResult:
 
 def _load_member(pack_dir: Path, role: str) -> dict[str, Any] | None:
     """Load one core member from a verified pack; None if unreadable."""
-    path = pack_dir / CORE_MEMBER_ROLES[role]
+    path = pack_member_path(pack_dir, CORE_MEMBER_ROLES[role])
     try:
-        data = safe_json_loads(path.read_bytes())
+        data = safe_json_loads(read_bounded_file(path))
     except ValueError:
         return None
     return data if isinstance(data, dict) else None
@@ -400,7 +401,7 @@ def pin_pack(pack_dir: str | Path) -> dict[str, str]:
             + ("; ".join(verification.reasons) if verification.reasons else verification.overall)
         )
     manifest_path = pack_dir / MANIFEST_MEMBER_PATH
-    manifest = safe_json_loads(manifest_path.read_bytes())
+    manifest = safe_json_loads(read_bounded_file(manifest_path))
     if not isinstance(manifest, dict):
         raise ReplayError("Manifest is not a JSON object")
     return {

@@ -24,6 +24,7 @@ MIN_SAFE_INTEGER: int = -9007199254740991  # -(2**53 - 1)
 
 # Default upper bound for JSON payloads (10 MiB)
 MAX_JSON_BYTES: int = 10 * 1024 * 1024
+MAX_JSON_DEPTH: int = 128
 
 
 class CanonicalizationError(ValueError):
@@ -40,6 +41,20 @@ def _no_duplicates_object_pairs_hook(pairs: list[tuple[str, Any]]) -> dict[str, 
     return res
 
 
+def _check_json_depth(value: Any) -> None:
+    stack = [(value, 1)]
+    while stack:
+        current, depth = stack.pop()
+        if not isinstance(current, (dict, list, tuple)):
+            continue
+        if depth > MAX_JSON_DEPTH:
+            raise ValueError("JSON nesting exceeds the supported depth")
+        children = current.values() if isinstance(current, dict) else current
+        stack.extend(
+            (child, depth + 1) for child in children if isinstance(child, (dict, list, tuple))
+        )
+
+
 def safe_json_loads(data: str | bytes, max_bytes: int = MAX_JSON_BYTES) -> Any:
     """Parse JSON with strict duplicate-key rejection and size bounding."""
     byte_len = len(data.encode("utf-8") if isinstance(data, str) else data)
@@ -47,7 +62,12 @@ def safe_json_loads(data: str | bytes, max_bytes: int = MAX_JSON_BYTES) -> Any:
         raise ValueError(
             f"JSON payload exceeds maximum allowed size ({byte_len} > {max_bytes} bytes)"
         )
-    return json.loads(data, object_pairs_hook=_no_duplicates_object_pairs_hook)
+    try:
+        parsed = json.loads(data, object_pairs_hook=_no_duplicates_object_pairs_hook)
+        _check_json_depth(parsed)
+        return parsed
+    except RecursionError as exc:
+        raise ValueError("JSON nesting exceeds the supported depth") from exc
 
 
 def check_integer_safety(obj: Any) -> None:
@@ -90,8 +110,9 @@ def canonicalize_json(data: Any) -> bytes:
 
     Enforces safe integer and float boundaries and returns UTF-8 encoded canonical bytes.
     """
-    check_integer_safety(data)
     try:
+        _check_json_depth(data)
+        check_integer_safety(data)
         return jcs.canonicalize(data)  # type: ignore[no-any-return]
     except Exception as exc:
         raise CanonicalizationError(f"JCS canonicalization failed: {exc}") from exc

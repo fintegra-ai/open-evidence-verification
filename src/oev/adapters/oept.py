@@ -137,6 +137,9 @@ class OEPTAdapter(PackageAdapter):
             if status_code == "UNSAFE_ARCHIVE":
                 safety_status = CheckStatus.FAIL
                 detail = "; ".join(oept_result.notes) or "Unsafe archive structure detected"
+            elif status_code == "MALFORMED_BUNDLE":
+                safety_status = CheckStatus.NOT_RUN
+                detail = "Malformed package; archive safety could not be established"
             else:
                 safety_status = CheckStatus.PASS
                 detail = "Archive structure and member paths are safe"

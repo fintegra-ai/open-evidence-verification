@@ -13,6 +13,7 @@ from oev.adapters.base import OptionalDependencyMissingError
 from oev.canonical import canonicalize_json, safe_json_loads
 from oev.decision_pack import build_pack, sign_pack_manifest
 from oev.engine import execute_verification
+from oev.fileio import MAX_PACKAGE_BYTES, read_bounded_file
 from oev.inspect import inspect_receipt_file
 from oev.models import OverallResult
 from oev.pack_verifier import (
@@ -44,7 +45,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
         sys.stderr.write(f"Error: profile file not found: {profile_path}\n")
         return 1
 
-    package_bytes = package_path.read_bytes()
+    package_bytes = read_bounded_file(package_path, MAX_PACKAGE_BYTES)
     profile = load_profile(profile_path)
 
     package_trust_keys: list[dict[str, Any]] | None = None
@@ -53,8 +54,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
         if not tk_path.is_file():
             sys.stderr.write(f"Error: package trust keys file not found: {tk_path}\n")
             return 1
-        with open(tk_path, "r", encoding="utf-8") as f:
-            package_trust_keys = safe_json_loads(f.read())
+        package_trust_keys = safe_json_loads(read_bounded_file(tk_path))
 
     private_key_pem: bytes | None = None
     if args.sign_receipt:
@@ -62,7 +62,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
         if not sk_path.is_file():
             sys.stderr.write(f"Error: signing key file not found: {sk_path}\n")
             return 1
-        private_key_pem = sk_path.read_bytes()
+        private_key_pem = read_bounded_file(sk_path)
 
     try:
         receipt, envelope = execute_verification(
@@ -135,7 +135,7 @@ def cmd_reverify(args: argparse.Namespace) -> int:
         sys.stderr.write(f"Error: profile file not found: {profile_path}\n")
         return 1
 
-    package_bytes = package_path.read_bytes()
+    package_bytes = read_bounded_file(package_path, MAX_PACKAGE_BYTES)
     profile = load_profile(profile_path)
 
     package_trust_keys: list[dict[str, Any]] | None = None
@@ -144,8 +144,7 @@ def cmd_reverify(args: argparse.Namespace) -> int:
         if not tk_path.is_file():
             sys.stderr.write(f"Error: package trust keys file not found: {tk_path}\n")
             return 1
-        with open(tk_path, "r", encoding="utf-8") as f:
-            package_trust_keys = safe_json_loads(f.read())
+        package_trust_keys = safe_json_loads(read_bounded_file(tk_path))
 
     try:
         report = reverify_package(
@@ -265,7 +264,7 @@ def cmd_pack_build(args: argparse.Namespace) -> int:
             creator_software=args.creator_software or None,
             creator_version=args.creator_version or None,
         )
-    except ValueError as exc:
+    except (ValueError, TypeError, KeyError, OSError, RecursionError) as exc:
         sys.stderr.write(f"Error: pack build failed: {exc}\n")
         return 1
 
@@ -298,7 +297,7 @@ def cmd_pack_verify(args: argparse.Namespace) -> int:
         if not sk_path.is_file():
             sys.stderr.write(f"Error: signing key file not found: {sk_path}\n")
             return 1
-        private_key_pem = sk_path.read_bytes()
+        private_key_pem = read_bounded_file(sk_path)
 
     outcome = verify_pack_offline(pack_dir, trust_store=trust_store)
 
@@ -310,7 +309,7 @@ def cmd_pack_verify(args: argparse.Namespace) -> int:
                 if private_key_pem is not None
                 else None
             )
-        except ValueError as exc:
+        except (ValueError, TypeError, KeyError, OSError, RecursionError) as exc:
             sys.stderr.write(f"Error: receipt generation failed: {exc}\n")
             return 1
         out_obj = envelope if envelope is not None else receipt
@@ -382,11 +381,11 @@ def cmd_pack_sign(args: argparse.Namespace) -> int:
     try:
         envelope = sign_pack_manifest(
             pack_dir=pack_dir,
-            private_key_pem=key_path.read_bytes(),
+            private_key_pem=read_bounded_file(key_path),
             key_id=args.key_id or "",
             out_path=Path(args.out) if args.out else None,
         )
-    except ValueError as exc:
+    except (ValueError, TypeError, KeyError, OSError, RecursionError) as exc:
         sys.stderr.write(f"Error: manifest signing failed: {exc}\n")
         return 1
 
@@ -568,7 +567,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return args.func(args)  # type: ignore[no-any-return]
-    except ValueError as exc:
+    except (ValueError, TypeError, KeyError, OSError, RecursionError) as exc:
         # Schema-invalid or otherwise unparseable JSON input (receipt, profile,
         # trust keys) must fail closed with a clean message, not a traceback.
         # SchemaValidationError and JSON decode errors are ValueError subclasses.

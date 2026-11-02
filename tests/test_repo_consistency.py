@@ -37,3 +37,19 @@ def test_schema_loader_resolves_package_copy() -> None:
         resolved = get_schema_path(path.name)
         assert resolved.is_file()
         assert resolved.name == path.name
+
+
+def test_profile_registry_has_unique_schema_valid_entries() -> None:
+    import json
+
+    from oev.profiles import load_profile
+
+    document = json.loads((REPO_ROOT / "profiles/registry.json").read_text())
+    identities = [(p["profile_id"], p["profile_version"]) for p in document["profiles"]]
+    assert len(identities) == len(set(identities))
+    for entry in document["profiles"]:
+        profile = load_profile(REPO_ROOT / entry["spec"])
+        assert (profile.profile_id, profile.profile_version) == (
+            entry["profile_id"],
+            entry["profile_version"],
+        )

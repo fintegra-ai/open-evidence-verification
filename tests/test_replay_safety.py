@@ -29,7 +29,6 @@ from oev.replay import (
     REASON_NOT_BOUND,
     REPLAY_OK,
     SIGNATURE_UNTRUSTED,
-    SNAPSHOT_INVALID,
     SNAPSHOT_LEAK,
     parse_iso_utc,
     pin_pack,
@@ -285,7 +284,9 @@ def test_replay_refuses_on_unparseable_captured_at(tmp_path: Path) -> None:
     _rewrite_member_and_manifest(pack_dir, "snapshot_context.json", doc)
 
     result = replay_snapshot(pack_dir)
-    assert result.replay_status == SNAPSHOT_INVALID
+    # Core-member schema validation now rejects this non-Z timestamp before
+    # replay-specific snapshot checks execute.
+    assert result.replay_status == PACK_INVALID
 
 
 def test_later_evidence_injected_into_pinned_pack_refuses_replay(tmp_path: Path) -> None:

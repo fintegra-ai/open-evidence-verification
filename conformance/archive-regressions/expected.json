@@ -15,6 +15,16 @@
       "archive": "path-collision.zip",
       "error": "PackArchiveError",
       "destination_created": false
+    },
+    {
+      "archive": "case-alias.zip",
+      "error": "PackArchiveError",
+      "destination_created": false
+    },
+    {
+      "archive": "unicode-alias.zip",
+      "error": "PackArchiveError",
+      "destination_created": false
     }
   ]
 }

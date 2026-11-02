@@ -66,11 +66,19 @@ from oev.decision_models import (
     DSSE_ENVELOPE_MEMBER_PATH,
     MANIFEST_MEMBER_PATH,
     MANIFEST_PAYLOAD_TYPE,
+    ROLE_TO_SCHEMA,
     MemberVerification,
     PackManifest,
     PackMember,
 )
 from oev.dsse import compute_pae, parse_dsse_envelope
+from oev.fileio import (
+    MAX_PACK_ENTRIES,
+    MAX_PACK_MEMBER_BYTES,
+    MAX_PACKAGE_BYTES,
+    pack_member_path,
+    read_bounded_file,
+)
 from oev.hashing import sha256_bytes
 from oev.schemas import validate_document
 from oev.signing import load_ed25519_public_key
@@ -504,7 +512,7 @@ def _verify_member(
     member: PackMember,
 ) -> tuple[MemberVerification, dict[str, Any] | None]:
     """Verify one manifest member. Returns (result, parsed_json_or_None)."""
-    file_path = pack_dir / member.path
+    file_path = pack_member_path(pack_dir, member.path)
     if not file_path.is_file():
         return (
             MemberVerification(
@@ -515,7 +523,7 @@ def _verify_member(
             ),
             None,
         )
-    stored = file_path.read_bytes()
+    stored = read_bounded_file(file_path, MAX_PACK_MEMBER_BYTES)
 
     if member.canonicalization == "raw":
         actual_digest = sha256_bytes(stored)
@@ -558,7 +566,21 @@ def _verify_member(
             None,
         )
 
-    canonical = canonicalize_json(parsed)
+    try:
+        canonical = canonicalize_json(parsed)
+        if member.role in ROLE_TO_SCHEMA:
+            validate_document(parsed, ROLE_TO_SCHEMA[member.role])
+    except (ValueError, TypeError, RecursionError):
+        return (
+            MemberVerification(
+                path=member.path,
+                status="UNREADABLE",
+                expected_digest=member.sha256,
+                expected_size_bytes=member.size_bytes,
+                actual_size_bytes=len(stored),
+            ),
+            None,
+        )
     actual_digest = sha256_bytes(canonical)
     if canonical != stored:
         status = "NOT_CANONICAL"
@@ -731,6 +753,55 @@ def _validate_member_path(path: str, role: str) -> str | None:
 
 
 def verify_pack_offline(
+    pack_dir: str | Path, trust_store: TrustStore | None = None
+) -> PackVerificationOutcome:
+    """Verify untrusted pack input, without reading outside its root."""
+    root = Path(pack_dir)
+    try:
+        if root.is_symlink():
+            raise ValueError("Pack root must not be a symlink")
+        total = 0
+        for count, path in enumerate(root.rglob("*"), start=1):
+            if count > MAX_PACK_ENTRIES:
+                raise ValueError("Pack exceeds entry limit")
+            if path.is_symlink():
+                raise ValueError("Pack contains a symlink")
+            if path.is_file():
+                size = path.stat().st_size
+                if size > MAX_PACK_MEMBER_BYTES:
+                    raise ValueError("Pack member exceeds size limit")
+                total += size
+                if total > MAX_PACKAGE_BYTES:
+                    raise ValueError("Pack exceeds total size limit")
+        return _verify_pack_offline(root, trust_store)
+    except (ValueError, TypeError, KeyError, OSError, RecursionError, AttributeError) as exc:
+        note = f"Pack input refused: {exc}"
+        checks = {
+            cid: PackCheckResult(check_id=cid, status=CHECK_NOT_RUN, note=note)
+            for cid in PACK_CHECK_IDS
+        }
+        checks[CHECK_PACK_PRESENT] = PackCheckResult(
+            check_id=CHECK_PACK_PRESENT, status=CHECK_PASS if root.is_dir() else CHECK_FAIL
+        )
+        checks[CHECK_MANIFEST_SCHEMA] = PackCheckResult(
+            check_id=CHECK_MANIFEST_SCHEMA, status=CHECK_FAIL, note=note
+        )
+        signature = SignatureEvaluation(
+            state=(
+                PackSignatureState.SIGNATURE_INVALID
+                if (root / DSSE_ENVELOPE_MEMBER_PATH).exists()
+                else PackSignatureState.SIGNATURE_NOT_PRESENT
+            ),
+            crypto_valid=False,
+            is_trusted=False,
+            trusted_key_id=None,
+            note="Input refused; signature was not evaluated",
+            verification_attempted=False,
+        )
+        return _finish_outcome(str(root), checks, [], [], [note], "", "", "", "", signature)
+
+
+def _verify_pack_offline(
     pack_dir: str | Path,
     trust_store: TrustStore | None = None,
 ) -> PackVerificationOutcome:
@@ -765,8 +836,8 @@ def verify_pack_offline(
     declared_pack_digest = ""
     recomputed_pack_digest = ""
 
-    manifest_file = pack_dir / MANIFEST_MEMBER_PATH
-    envelope_file = pack_dir / DSSE_ENVELOPE_MEMBER_PATH
+    manifest_file = pack_member_path(pack_dir, MANIFEST_MEMBER_PATH)
+    envelope_file = pack_member_path(pack_dir, DSSE_ENVELOPE_MEMBER_PATH)
 
     if not manifest_file.is_file():
         record(CHECK_PACK_PRESENT, CHECK_FAIL, f"Missing {MANIFEST_MEMBER_PATH}")
@@ -808,7 +879,7 @@ def verify_pack_offline(
         )
 
     try:
-        manifest_data = safe_json_loads(manifest_file.read_bytes())
+        manifest_data = safe_json_loads(read_bounded_file(manifest_file))
     except ValueError as exc:
         record(CHECK_PACK_PRESENT, CHECK_FAIL, f"manifest.json is not valid JSON: {exc}")
         mark_remaining_not_run("manifest unreadable")
@@ -853,7 +924,7 @@ def verify_pack_offline(
     except (KeyError, TypeError, ValueError) as exc:
         record(CHECK_MANIFEST_SCHEMA, CHECK_FAIL, f"Manifest could not be loaded: {exc}")
 
-    manifest_bytes = manifest_file.read_bytes()
+    manifest_bytes = read_bounded_file(manifest_file)
     manifest_canonical = canonicalize_json(manifest_data) == manifest_bytes
     record(
         CHECK_MANIFEST_CANONICAL,
@@ -903,6 +974,8 @@ def verify_pack_offline(
         )
 
         for member in manifest.members:
+            if _validate_member_path(member.path, member.role):
+                raise ValueError(f"Unsafe or invalid manifest member: {member.path!r}")
             result, parsed = _verify_member(pack_dir, member)
             member_results.append(result)
             if parsed is not None and member.path in CORE_MEMBER_ROLES.values():
@@ -983,7 +1056,7 @@ def verify_pack_offline(
         )
     else:
         try:
-            envelope = safe_json_loads(envelope_file.read_bytes())
+            envelope = safe_json_loads(read_bounded_file(envelope_file))
         except ValueError as exc:
             signature = _invalid_structural(f"manifest.dsse.json is not a valid JSON object: {exc}")
         else:
@@ -1243,6 +1316,26 @@ def verify_pack_receipt(
     trust_store: TrustStore | None = None,
     pack_dir: str | Path | None = None,
 ) -> PackReceiptVerification:
+    """Inspect untrusted receipt inputs and fail closed on unreadable bindings."""
+    try:
+        return _verify_pack_receipt(source, trust_store, pack_dir)
+    except (ValueError, TypeError, KeyError, OSError, RecursionError) as exc:
+        return PackReceiptVerification(
+            receipt_source=str(source) if not isinstance(source, dict) else "<dict>",
+            is_dsse=isinstance(source, dict) and "payloadType" in source,
+            schema_valid=False,
+            declared_receipt_digest="",
+            receipt_digest_valid=False,
+            overall=OVERALL_RECEIPT_INVALID,
+            reasons=[f"Receipt input refused: {exc}"],
+        )
+
+
+def _verify_pack_receipt(
+    source: str | Path | dict[str, Any],
+    trust_store: TrustStore | None = None,
+    pack_dir: str | Path | None = None,
+) -> PackReceiptVerification:
     """Verify a pack verification receipt offline, as a third party would.
 
     Checks: schema validity, receipt self-digest, the receipt's own DSSE
@@ -1251,7 +1344,7 @@ def verify_pack_receipt(
     disk (detects a receipt presented for different pack bytes).
     """
     if isinstance(source, (str, Path)):
-        raw_bytes = Path(source).read_bytes()
+        raw_bytes = read_bounded_file(source)
         source_str = str(source)
         data = safe_json_loads(raw_bytes)
     elif isinstance(source, dict):
@@ -1356,12 +1449,12 @@ def verify_pack_receipt(
     pack_binding_note = ""
     if pack_dir is not None:
         pack_path = Path(pack_dir)
-        manifest_file = pack_path / MANIFEST_MEMBER_PATH
+        manifest_file = pack_member_path(pack_path, MANIFEST_MEMBER_PATH)
         if not manifest_file.is_file():
             pack_binding_note = "pack directory has no manifest.json; binding not checked"
         else:
             try:
-                pack_manifest = safe_json_loads(manifest_file.read_bytes())
+                pack_manifest = safe_json_loads(read_bounded_file(manifest_file))
             except ValueError as exc:
                 pack_binding_note = f"pack manifest unreadable: {exc}"
             else:
@@ -1382,9 +1475,13 @@ def verify_pack_receipt(
 
     overall = (
         OVERALL_RECEIPT_VALID
-        if schema_valid and digest_valid and pack_binding != PACK_BINDING_MISMATCH
+        if schema_valid
+        and digest_valid
+        and (pack_dir is None or pack_binding == PACK_BINDING_MATCH)
         else OVERALL_RECEIPT_INVALID
     )
+    if pack_dir is not None and pack_binding == PACK_BINDING_NOT_RUN:
+        reasons.append("Explicit pack binding could not be established")
     if pack_binding == PACK_BINDING_MISMATCH:
         reasons.append("Receipt is bound to different pack bytes than the supplied pack")
 

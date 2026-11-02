@@ -27,6 +27,8 @@ def main() -> None:
         "late-crc": bytes(late_crc),
         "empty-segment": make_archive(["first.txt", "dir//last.txt"]),
         "path-collision": make_archive(["a", "a/b"]),
+        "case-alias": make_archive(["First.txt", "first.txt"]),
+        "unicode-alias": make_archive(["caf\u00e9.txt", "cafe\u0301.txt"]),
     }
     for name, body in cases.items():
         (ROOT / f"{name}.zip").write_bytes(body)

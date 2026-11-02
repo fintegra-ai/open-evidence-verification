@@ -10,6 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Archive extraction rejects case/Unicode filename aliases before any writes.
+- Offline pack verification refuses symlinks, escaping manifest paths, oversized
+  files and excessive entries before reading payloads. Core member schemas are
+  checked even when an attacker recomputes every manifest hash.
+- Receipt inspection/re-verification enforce the OEVP DSSE payload type.
+- Re-verification detects omitted optional checks, changed trust inputs and
+  inconsistent overall results, even when the receipt self-digest is recomputed.
+- Bounded input readers reject oversized/non-regular files before loading them;
+  JSON nesting is bounded to 128 containers and malformed input fails cleanly.
+- A malformed package cannot pass an archive-safety-only profile.
+- Remove a duplicate registry entry and guard registry uniqueness/schema validity.
+
+## [0.2.2] — 2026-11-02
+
+
+### Fixed
+
 - Validate and stage every archive member before extraction; reject path aliases,
   file/directory collisions, symlink entries, and existing destination files.
   Permanent hostile archive vectors cover late CRC failures and path collisions.
@@ -24,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Distribution name changed from `oev` to `open-evidence-verification` (PyPI name taken by an unrelated project). Import package `oev` and CLI `oev` are unchanged; install with `pip install open-evidence-verification[oept]` for the OEPT adapter.
 
-## [Unreleased]
+
 
 ### Added
 

@@ -24,7 +24,7 @@ prohibited by the plan and by GOVERNANCE.md §3. To add an entry, see
 
 ## Package status
 
-- PyPI: `open-evidence-verification 0.2.1` (reference verifier), `oept 0.1.1`
+- PyPI: `open-evidence-verification 0.2.2` (reference verifier), `oept 0.1.2`
   (bundle format), [`oev-conformance-vectors 0.1.0`](https://pypi.org/project/oev-conformance-vectors/0.1.0/)
   (published vector set; verified 2026-11-02).
 - npm: `oept-verifier-ts 0.1.0` (TS verifier, published 2026-11-01).

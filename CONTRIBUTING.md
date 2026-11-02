@@ -24,14 +24,15 @@ Python ≥ 3.10 is supported (CI runs 3.10–3.13; see
 
 ### Optional OEPT adapter
 
-The reference adapter for OEPT bundles is optional. The OEPT package (Open Evidence
-Provenance Toolkit) is a sibling project not yet published to PyPI; to run the
-OEPT-dependent tests and the full conformance suite locally, install OEPT from its own
-checkout:
+The reference adapter for OEPT bundles is optional. OEPT is published on PyPI.
+To run the full test/conformance suite, install both development tools and the adapter:
 
 ```bash
-pip install -e /path/to/open-evidence-provenance
+pip install -e ".[dev,oept]"
 ```
+
+For work on both source repositories, install the sibling checkout explicitly:
+`pip install -e /path/to/open-evidence-provenance`.
 
 Tests that require the adapter are skipped automatically (with an explicit reason) when
 OEPT is not installed; everything else — the whole protocol core, receipt inspection,

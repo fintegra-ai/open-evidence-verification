@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import Any
 
 from oev.canonical import safe_json_loads
-from oev.dsse import parse_dsse_envelope
+from oev.dsse import DEFAULT_PAYLOAD_TYPE, DsseError, parse_dsse_envelope
+from oev.fileio import read_bounded_file
 from oev.models import VerificationReceipt
 from oev.receipts import verify_receipt_digest
 from oev.schemas import validate_document
@@ -120,7 +121,9 @@ def inspect_receipt_data(
     if "payloadType" in data and "payload" in data and "signatures" in data:
         # DSSE Envelope
         is_dsse = True
-        _, payload_bytes, signatures = parse_dsse_envelope(data)
+        payload_type, payload_bytes, signatures = parse_dsse_envelope(data)
+        if payload_type != DEFAULT_PAYLOAD_TYPE:
+            raise DsseError("Unexpected DSSE payloadType for an OEVP receipt")
         if signatures:
             envelope_key_id = signatures[0].get("keyid") or None
 
@@ -165,7 +168,6 @@ def inspect_receipt_file(
     verifier_trust_store: TrustStore | None = None,
 ) -> InspectionResult:
     """Load receipt file (JSON or DSSE) and run offline inspection."""
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
+    content = read_bounded_file(path)
     data = safe_json_loads(content)
     return inspect_receipt_data(data, verifier_trust_store=verifier_trust_store)

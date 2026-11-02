@@ -70,3 +70,12 @@ the old token. A failed or missing upload cannot count as rotation completed.
 These statuses are project evidence and governance gates; they are not
 presented as official NLnet rules. No deadline or filing-cycle recommendation
 is inferred from stale notes.
+
+## Superseding publication / account update
+
+The earlier prepared/unpublished statuses above are historical. OEPT 0.1.2
+and OEVP 0.2.2 were published and all four artifact hashes independently
+verified on 2026-11-02. The account owner confirmed revocation of the old
+account-wide token after the project-scoped uploads. Project credentials
+persist in macOS Keychain, with no token values stored in this repository.
+See SECOND_REVIEW_2026-11-02.md for the subsequent source review.

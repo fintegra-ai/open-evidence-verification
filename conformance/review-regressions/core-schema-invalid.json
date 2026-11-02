@@ -1,0 +1,5 @@
+{
+  "facts": "not an array",
+  "expected": "PACK_INVALID",
+  "member_status": "UNREADABLE"
+}

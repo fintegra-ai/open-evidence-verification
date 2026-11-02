@@ -67,3 +67,19 @@ def test_permanent_archive_regression_vectors(tmp_path: Path) -> None:
         with pytest.raises(PackArchiveError):
             extract_pack_archive(corpus / case["archive"], out)
         assert out.exists() is case["destination_created"]
+
+
+@pytest.mark.parametrize(
+    "names",
+    [
+        ["First.txt", "first.txt"],
+        ["café.txt", "café.txt"],
+        ["A", "a/b"],
+    ],
+)
+def test_portable_name_collisions_refused_before_writes(tmp_path: Path, names: list[str]) -> None:
+    source = make_zip(tmp_path / "bad.zip", names)
+    out = tmp_path / "out"
+    with pytest.raises(PackArchiveError):
+        extract_pack_archive(source, out)
+    assert not out.exists()

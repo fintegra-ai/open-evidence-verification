@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .canonical import canonicalize_json, safe_json_loads
+from .fileio import read_bounded_file
 from .hashing import sha256_bytes
 from .models import CheckResult, CheckStatus, Limitation, OverallResult, VerificationReceipt
 from .schemas import validate_document
@@ -145,8 +146,7 @@ def verify_receipt_digest(receipt: dict[str, Any] | VerificationReceipt) -> tupl
 def load_receipt(source: str | Path | dict[str, Any]) -> VerificationReceipt:
     """Load and validate a VerificationReceipt from file path or dictionary."""
     if isinstance(source, (str, Path)):
-        with open(source, "r", encoding="utf-8") as f:
-            content = f.read()
+        content = read_bounded_file(source)
         data = safe_json_loads(content)
     elif isinstance(source, dict):
         data = source

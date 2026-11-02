@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "open-evidence-verification"
-version = "0.2.2"
+version = "0.2.3"
 description = "Open Evidence Verification Protocol (OEVP) - Vendor-neutral evidence appraisal, verification profiles, portable receipts, and decision evidence packs"
 readme = "README.md"
 license = "Apache-2.0"
@@ -31,11 +31,15 @@ dependencies = [
     "jsonschema>=4.20.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/fintegra-ai/open-evidence-verification"
+Repository = "https://github.com/fintegra-ai/open-evidence-verification"
+
 [project.optional-dependencies]
 oept = [
     # Must match OEPT's distribution name on PyPI (see open-evidence-provenance
     # pyproject.toml: name = "oept"); the import name and dist name agree.
-    "oept>=0.1.0",
+    "oept>=0.1.2",
 ]
 dev = [
     "pytest>=7.4.0",

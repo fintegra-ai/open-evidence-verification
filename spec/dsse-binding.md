@@ -30,6 +30,8 @@ OEVP receipts are packaged into standard DSSE v1 envelopes:
 }
 ```
 
+- Receipt inspection and re-verification MUST reject a different `payloadType`,
+  even if the decoded JSON matches the receipt schema.
 - **`payloadType`**: MUST be `application/vnd.oev.verification-receipt+json`.
 - **`payload`**: Standard Base64 encoding of the JCS-canonicalized Verification Receipt (including its `receipt_digest`).
 - **`signatures`**: Array containing at least one signature object with `sig` (Base64) and optional `keyid` string.

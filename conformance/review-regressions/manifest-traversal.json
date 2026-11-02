@@ -1,0 +1,6 @@
+{
+  "path": "artifacts/../../outside.txt",
+  "role": "artifact",
+  "expected": "PACK_INVALID",
+  "outside_file_read": false
+}

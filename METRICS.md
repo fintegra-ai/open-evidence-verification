@@ -13,7 +13,7 @@ baseline (2026-11-01) and is the seed for the public metrics page (Kapı J).
 | External merged contributions | 0 | GitHub PRs to `fintegra-ai/*` are project-internal so far |
 | Public pilot packages | 0 | none published |
 | Failed interop attempts (recorded) | 0 — interop table is live and accepts external submissions | docs/interop-table.md |
-| PyPI releases | `open-evidence-verification 0.2.1`, `oept 0.1.1`, `oev-conformance-vectors 0.1.0` | pypi.org JSON API, 2026-11-01 |
+| PyPI releases | `open-evidence-verification 0.2.2`, `oept 0.1.2`, `oev-conformance-vectors 0.1.0` | pypi.org JSON API, 2026-11-01 |
 | npm releases | **1** — `oept-verifier-ts 0.1.0` (published 2026-11-01, maintainer fintegraai) | registry.npmjs.org/oept-verifier-ts |
 | Profiles total | 6 — 1 registered (Profile 0) + 5 draft (domain adapters/vectors are funded-work) | profiles/registry.json |
 | Interop table | published with 2 entries (both project-internal; external submissions open) | docs/interop-table.md |
@@ -94,10 +94,24 @@ or private claims.
 - Release-verification workflow repaired (CLI option and unsigned profile);
   source changes now trigger build/vector/evidence checks. Local wheel evidence
   and final CI status are recorded in the closure report.
-- PyPI project-scoped credential rotation is **PENDING verification**;
+- PyPI project-scoped credential rotation is **COMPLETE** (owner confirmation 2026-11-02);
   no credential values are recorded. It is not an application blocker.
 - Existing publications: PyPI `oept 0.1.1`, `open-evidence-verification 0.2.1`,
   `oev-conformance-vectors 0.1.0`; npm `oept-verifier-ts 0.1.0`.
 - Remaining human/external steps: second human maintainer before funding intake,
   named external pilots/implementers if claimed, human-written application,
   and owner confirmation of private deployment credential rotation.
+
+## Second source review — 2026-11-02
+
+- Current released patches: OEPT 0.1.2 and OEVP 0.2.2, all four published
+  distribution hashes verified. The account owner confirmed old account-token
+  revocation after project-scoped uploads. Project credentials persist in
+  macOS Keychain; no token values are recorded here.
+- Second-review source candidates: OEPT 0.1.3 and OEVP 0.2.3, not yet published.
+  OEPT 101 tests; OEVP 176 tests with the adapter; lint/format/strict mypy pass.
+  Findings and final evidence are in docs/SECOND_REVIEW_2026-11-02.md.
+- The registry now has six unique entries (one registered, five draft),
+  removing a duplicate Profile 0. No draft profile is promoted by this review.
+- External implementers/pilots and second human maintainer remain unchanged;
+  this review does not invent contributors, partnerships, or an application.

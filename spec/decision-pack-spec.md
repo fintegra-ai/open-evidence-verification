@@ -318,3 +318,13 @@ The decision pack format explicitly does NOT provide:
   `captured_at` bounds the replay scope but proves nothing about when evidence really arrived.
 - **Non-equivocation** — two contradictory packs can both be internally valid; transparency
   services (e.g. RFC 9943) are required to detect equivocation.
+
+### Input boundaries clarified (2026-11-02)
+
+Offline verification refuses member paths that escape the supplied pack root,
+symlinks (including symlink ancestors/root), non-regular files, and size/entry
+bound violations before consuming payload content. Valid digests do not bypass
+core-member JSON Schema validation. The implementation defaults are 10 MiB for
+JSON inputs, 64 MiB per pack member, 512 MiB total pack/package input, and
+10,000 directory entries. JSON nesting is limited to 128 container levels.
+These bounds are technical resource protections, not assessments of content.

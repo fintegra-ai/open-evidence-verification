@@ -14,7 +14,7 @@
 | Conformance: language-independent vectors + runner | OEVP `conformance/vectors/` (v0.1.0) + `conformance/run_vectors.py`; standalone package [`oev-conformance-vectors` 0.1.0](https://pypi.org/project/oev-conformance-vectors/0.1.0/) (published) |
 | Conformance: reference passes everything | Baseline OEVP suite 153 passed (2026-11-01); current rerun in `docs/CLOSURE_STATUS_2026-11-02.md`; OEPT corpus 10/10; runner exit 0 (12 active vectors) |
 | **Second implementation** (project-internal, not external adoption) | `fintegra-ai/open-evidence-verifier-ts` — **12/12 vector parity** with the Python reference, stdlib-only, ambiguity log A-001 |
-| Public PyPI packages | `open-evidence-verification 0.2.1`, `oept 0.1.1` (pypi.org) |
+| Public PyPI packages | `open-evidence-verification 0.2.2`, `oept 0.1.2` (pypi.org) |
 | Threat model | both repos, `spec/threat-model.md` |
 | Security process | OEPT `SECURITY.md`; gitleaks full-history CI in both repos (checksum-pinned) |
 | Governance | `GOVERNANCE.md` (DCO, CC-BY-4.0 spec license, conformance-brand rule, no-funding-before-second-maintainer) |
@@ -41,9 +41,10 @@ governance, boundary/security tooling, PyPI releases.
 
 ## 3. Remaining owner / external steps
 
-- PyPI credential rotation: separate project-scoped tokens for `oept` and
-  `open-evidence-verification`, successful project-scoped uploads, then revoke
-  the account-wide token. Pending verification; not an application blocker.
+- PyPI credential rotation: complete. Separate project tokens were used for
+  the verified 0.1.2 / 0.2.2 uploads; the account owner confirmed revocation of
+  the old account-wide token on 2026-11-02. Credentials persist in macOS Keychain;
+  no credential values are included in this dossier.
 - Second maintainer: required by this project's GOVERNANCE before funding
   intake; do not count an automated agent as a second human maintainer.
 - External implementers / pilots: 0 recorded; do not invent participants.
