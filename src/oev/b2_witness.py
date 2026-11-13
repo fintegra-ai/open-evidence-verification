@@ -69,7 +69,10 @@ from cryptography.hazmat.primitives import serialization
 
 from . import __version__ as _OEV_VERSION
 from .attestation import compute_attestation_digest
+from .b2_completeness import build_execution_completeness, sign_execution_completeness
+from .b2_signed_auth import verify_signed_witness_authorization
 from .canonical import canonicalize_json
+from .code_digest import build_code_digest_document, build_environment_record
 from .engine import execute_verification, utc_now_iso
 from .execution import build_prebinding, compute_code_digest, compute_trust_inputs_digest
 from .execution_log import LogCheckpoint, events_from_jsonl, merkle_inclusion_proof
@@ -127,13 +130,34 @@ MODEL_B2_LIMITATIONS: list[dict[str, Any]] = [
 _B2T = TypeVar("_B2T", bound="B2ProcessWitness")
 
 
+MODEL_B2_LIMITATIONS_MTLS: list[dict[str, Any]] = [
+    (
+        {
+            "code": "B2_MTLS_SAME_HOST",
+            "description": (
+                "Same host, separate trust domain: separate process, venv, "
+                "keystore and mutually-authenticated TLS channel. NO physical "
+                "or administrative independence is claimed; a host-level "
+                "attacker defeats this deployment."
+            ),
+            "material": True,
+        }
+        if lim["code"] == "B2_PROTOTYPE_ISOLATION"
+        else dict(lim)
+    )
+    for lim in MODEL_B2_LIMITATIONS
+]
+
 
 def limitations_for_channel(channel: str | None) -> list[dict[str, Any]]:
     """Attestation limitations for a witness channel.
 
     The stdio-pipe prototype keeps the round-3 ``B2_PROTOTYPE_ISOLATION``
-    entry.
+    entry; an mTLS channel replaces it with ``B2_MTLS_SAME_HOST``
+    (same-host honesty is preserved — only the transport claim changes).
     """
+    if channel in ("mtls-tls13-localhost", "mtls"):
+        return [dict(lim) for lim in MODEL_B2_LIMITATIONS_MTLS]
     return [dict(lim) for lim in MODEL_B2_LIMITATIONS]
 
 
@@ -289,6 +313,12 @@ class B2ReexecutingWitness:
         self.key_id = key_id
         self.log_id = log_id
         self._log_path = Path(log_path) if log_path is not None else None
+        # Kept for sign_completeness_statement: the execution completeness
+        # statement is signed by the log-operator (checkpoint-signer) key,
+        # never by the witness attestation key (role separation, §9.2).
+        self._checkpoint_private_key_pem = (
+            bytes(checkpoint_private_key_pem) if checkpoint_private_key_pem is not None else None
+        )
         self._checkpoint_key_id = checkpoint_key_id
         self.authorization = (
             validate_witness_authorization(authorization) if authorization is not None else None
@@ -347,6 +377,25 @@ class B2ReexecutingWitness:
 
     def checkpoint(self, claimed_time: str) -> dict[str, Any]:
         return self._service.checkpoint(claimed_time)
+
+    def completeness(self, checkpoint: Any, claimed_time: str) -> dict[str, Any]:
+        return self._service.completeness(checkpoint, claimed_time)
+
+    def sign_completeness_statement(self, statement: Any) -> dict[str, Any]:
+        """DSSE-sign an execution completeness statement.
+
+        Signed with the checkpoint-signer (log operator) key, never the
+        witness key. Raises ValueError when no checkpoint key was
+        configured — an unsigned statement is never emitted silently.
+        """
+        if self._checkpoint_private_key_pem is None:
+            raise ValueError(
+                "No checkpoint-signer key configured; refusing to sign an "
+                "execution completeness statement without the log-operator key"
+            )
+        return sign_execution_completeness(
+            statement, self._checkpoint_private_key_pem, self._checkpoint_key_id
+        )
 
     @property
     def events(self) -> list[Any]:
@@ -645,6 +694,12 @@ class B2ProcessWitness:
     def checkpoint(self, claimed_time: str) -> dict[str, Any]:
         return self._call("checkpoint", {"claimed_time": claimed_time})
 
+    def completeness(self, checkpoint: dict[str, Any], claimed_time: str) -> dict[str, Any]:
+        return self._call("completeness", {"checkpoint": checkpoint, "claimed_time": claimed_time})
+
+    def sign_completeness(self, statement: dict[str, Any]) -> dict[str, Any]:
+        return self._call("sign_completeness", {"statement": statement})
+
     def reexecute(
         self,
         package_bytes: bytes,
@@ -701,6 +756,9 @@ def run_b2_witnessed_verification(
     tsa_gen_time: str | None = None,
     producer_workdir: str | Path | None = None,
     witness_workdir: str | Path | None = None,
+    signed_authorization: dict[str, Any] | None = None,
+    authorization_issuer_trust_store: Any | None = None,
+    require_signed_authorization: bool = False,
 ) -> dict[str, Any]:
     """Run a Model B2 witnessed verification (producer + re-executing witness).
 
@@ -716,6 +774,17 @@ def run_b2_witnessed_verification(
     fields). Without a TSA the manifest records
     ``timestamp_status: "UNVERIFIED"``.
 
+    Round 4 additions: the run emits a signed log-completeness
+    statement (``log-completeness.dsse.json``) and a signed execution
+    completeness statement (``b2-completeness.dsse.json`` — executed /
+    NOT_RUN / skipped per check, bound to the checkpoint + code
+    digest); the attested ``code_version`` carries the policy digest
+    (the profile digest) and the environment record, and the full
+    code-digest document is recorded in the manifest. When
+    ``signed_authorization`` is supplied its signature is verified
+    against ``authorization_issuer_trust_store``; when
+    ``require_signed_authorization`` is set an unsigned authorisation
+    is refused outright.
     """
     from oev.tsa import MockTSA
 
@@ -778,16 +847,55 @@ def run_b2_witnessed_verification(
             "Code digest mismatch: witness code digest != producer code digest "
             "(witness and producer must run the same code version)"
         )
+    # Round 4: bind code / policy / dependency digests to the commitment.
+    # ``policy_digest`` is the profile digest (the policy the code ran
+    # under); ``environment`` records interpreter + venv fingerprint.
+    # The full code-digest document (oev-code-digest/0.1) is recorded
+    # in the manifest so a verifier can compare it field by field.
+    code_digest_document = build_code_digest_document(
+        f"oev {_OEV_VERSION}",
+        adapter_label,
+        policy_digest=local_profile_digest,
+    )
     code_version = {
         "engine": f"oev {_OEV_VERSION}",
         "adapter": adapter_label,
         "code_digest": witness_code_digest,
+        "policy_digest": local_profile_digest,
+        "environment": build_environment_record(),
     }
 
     # Authorisation: the witness may only attest its authorised profiles/formats.
+    # Round 4: a signed authorisation (DSSE, issuer-signed) takes precedence
+    # over the unsigned in-process document; when signed authorisation is
+    # required, an unsigned document is refused outright.
     witness_channel = str(getattr(witness, "channel", "stdio-pipe") or "stdio-pipe")
+    signed_auth_doc: Any = None
+    if signed_authorization is not None:
+        expected_wit_digest = None
+        if witness_public_pem is not None:
+            expected_wit_digest = sha256_bytes(bytes(witness_public_pem))
+        signed_auth_doc, auth_ok, auth_note = verify_signed_witness_authorization(
+            signed_authorization,
+            authorization_issuer_trust_store,
+            expected_witness_public_key_digest=expected_wit_digest,
+        )
+        if not auth_ok or signed_auth_doc is None:
+            raise ValueError(f"Signed witness authorisation rejected: {auth_note}")
+        if signed_auth_doc.witness_key_id != witness.key_id:
+            raise ValueError(
+                "Signed witness authorisation is for a different witness key_id "
+                f"({signed_auth_doc.witness_key_id!r} != {witness.key_id!r})"
+            )
+        if profile.profile_id not in signed_auth_doc.authorized_profiles:
+            raise ValueError(f"Witness is not authorised for profile {profile.profile_id!r}")
+    elif require_signed_authorization:
+        raise ValueError(
+            "Unsigned witness authorisation rejected: this B2 deployment "
+            "requires a signed (issuer-signed DSSE) authorisation document"
+        )
     authorization = getattr(witness, "authorization", None)
-    if authorization is not None:
+    if signed_auth_doc is None and authorization is not None:
         if profile.profile_id not in authorization["profiles"]:
             raise ValueError(f"Witness is not authorised for profile {profile.profile_id!r}")
         if (
@@ -920,6 +1028,70 @@ def run_b2_witnessed_verification(
     checkpoint = dict(checkpoint_result["checkpoint"])
     checkpoint_digest = LogCheckpoint.from_dict(checkpoint).checkpoint_digest()
 
+    # 5b. Signed completeness (round 4): the log operator's completeness
+    # statement (DISPROVEN condition 3) and the B2 execution
+    # completeness statement (executed / NOT_RUN / skipped per check,
+    # bound to checkpoint + code digest). Either may be absent when the
+    # witness was configured without a checkpoint key — that is
+    # recorded honestly in the manifest instead of failing the run.
+    log_completeness_envelope: dict[str, Any] | None = None
+    log_completeness_note = ""
+    try:
+        if isinstance(witness, B2ReexecutingWitness):
+            comp_result = witness.completeness(LogCheckpoint.from_dict(checkpoint), claimed_time)
+        else:
+            comp_result = witness.completeness(checkpoint, claimed_time)
+        log_completeness_envelope = dict(comp_result["envelope"])
+        (out_dir / "log-completeness.dsse.json").write_bytes(
+            canonicalize_json(log_completeness_envelope)
+        )
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        log_completeness_note = f"log completeness statement not emitted: {exc}"
+    execution_completeness_envelope: dict[str, Any] | None = None
+    execution_completeness_statement: dict[str, Any] | None = None
+    execution_completeness_note = ""
+    try:
+        statement = build_execution_completeness(
+            execution_id=execution_id,
+            checkpoint_digest=checkpoint_digest,
+            code_digest=witness_code_digest,
+            witness_key_id=witness.key_id,
+            receipt_checks=[
+                {
+                    "check_id": c.check_id,
+                    "status": str(
+                        c.status.value if isinstance(c.status, CheckStatus) else c.status
+                    ),
+                }
+                for c in producer_receipt.checks
+            ],
+            profile_check_ids=check_ids,
+            claimed_time=claimed_time,
+            policy_digest=local_profile_digest,
+        )
+        execution_completeness_statement = statement.to_dict()
+        if isinstance(witness, B2ReexecutingWitness):
+            execution_completeness_envelope = witness.sign_completeness_statement(statement)
+        elif hasattr(witness, "sign_completeness"):
+            signed = witness.sign_completeness(statement.to_dict())
+            execution_completeness_envelope = (
+                dict(signed["envelope"]) if "envelope" in signed else dict(signed)
+            )
+        else:
+            execution_completeness_note = (
+                "execution completeness statement built but not signed: "
+                "witness does not support sign_completeness"
+            )
+            execution_completeness_envelope = None
+        if execution_completeness_envelope is not None:
+            (out_dir / "b2-completeness.dsse.json").write_bytes(
+                canonicalize_json(execution_completeness_envelope)
+            )
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        execution_completeness_note = f"execution completeness statement not emitted: {exc}"
+        execution_completeness_envelope = None
+        execution_completeness_statement = None
+
     if isinstance(witness, B2ReexecutingWitness) or hasattr(witness, "export_log_jsonl"):
         log_bytes = witness.export_log_jsonl()
     else:
@@ -997,6 +1169,23 @@ def run_b2_witnessed_verification(
         "timestamp_status": timestamp_status,
         "isolation_claim": "prototype-process-venv-key-workdir-only",
         "channel": witness_channel,
+        "code_digest_document": code_digest_document,
+        "log_completeness": {
+            "emitted": log_completeness_envelope is not None,
+            "note": log_completeness_note,
+        },
+        "execution_completeness": {
+            "emitted": execution_completeness_envelope is not None,
+            "note": execution_completeness_note,
+            "statement": execution_completeness_statement,
+        },
+        "signed_authorization": {
+            "required": require_signed_authorization,
+            "present": signed_authorization is not None,
+            "issuer_key_id": (
+                str(signed_auth_doc.issuer_key_id) if signed_auth_doc is not None else None
+            ),
+        },
         "isolation": {
             "producer_workdir": str(producer_workdir) if producer_workdir else None,
             "witness_workdir": str(witness_workdir) if witness_workdir else None,
@@ -1004,6 +1193,7 @@ def run_b2_witnessed_verification(
             "separate_keys": True,
             "separate_workdir": bool(producer_workdir and witness_workdir),
             "channel": witness_channel,
+            "mutual_tls": witness_channel.startswith("mtls"),
             "physical_or_administrative_independence": False,
         },
         "checkpoint": checkpoint,
@@ -1030,6 +1220,17 @@ def run_b2_witnessed_verification(
         "attested_checks": sorted(attestation_digests),
         "timestamp_status": timestamp_status,
         "channel": witness_channel,
+        "log_completeness_path": (
+            str(out_dir / "log-completeness.dsse.json")
+            if log_completeness_envelope is not None
+            else None
+        ),
+        "execution_completeness_path": (
+            str(out_dir / "b2-completeness.dsse.json")
+            if execution_completeness_envelope is not None
+            else None
+        ),
+        "code_digest_document": code_digest_document,
         "out_dir": str(out_dir),
         "receipt_path": str(receipt_path),
         "manifest_path": str(out_dir / "b2-manifest.json"),

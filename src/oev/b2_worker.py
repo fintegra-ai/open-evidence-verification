@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from oev.b2_witness import B2ReexecutingWitness
+from oev.execution_log import LogCheckpoint
 from oev.models import VerificationProfile
 
 
@@ -77,10 +78,20 @@ def _handle(service: B2ReexecutingWitness, request: dict[str, Any]) -> dict[str,
     if op == "checkpoint":
         result = service.checkpoint(str(request["claimed_time"]))
         return {"ok": True, **result}
+    if op == "completeness":
+        checkpoint = LogCheckpoint.from_dict(dict(request["checkpoint"]))
+        result = service.completeness(checkpoint, str(request["claimed_time"]))
+        return {"ok": True, **result}
     if op == "export_log":
         import base64 as _b64
 
         return {"ok": True, "log_b64": _b64.b64encode(service.export_log_jsonl()).decode("ascii")}
+    if op == "sign_completeness":
+        from oev.b2_completeness import ExecutionCompletenessStatement
+
+        statement = ExecutionCompletenessStatement.from_dict(dict(request["statement"]))
+        envelope = service.sign_completeness_statement(statement)
+        return {"ok": True, "envelope": envelope}
     if op == "reexecute":
         raw_package = base64.b64decode(str(request["package_b64"]).encode("ascii"), validate=True)
         profile = VerificationProfile.from_dict(dict(request["profile"]))
