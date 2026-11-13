@@ -251,7 +251,9 @@ in order:
    `expected_pack_digest` on every later replay. If the pack's recomputed digest differs from
    the pin, replay MUST refuse (`PACK_HASH_CHANGED`) — even when the manifest was rewritten
    fully self-consistently (member digests and `pack_digest` all agree), because only the
-   external pin anchors "the pack I originally accepted".
+   external pin anchors "the pack I originally accepted". A replay with no pin and no
+   trust roots is refused by default (`PINLESS_REPLAY_REFUSED`, see "No anchor" below);
+   the pin is therefore not merely recommended — it is the normal way a replay proceeds.
 3. **Snapshot isolation.** The replay scope of a snapshot contains exactly the facts that are
    (a) bound to a source of that snapshot via `snapshot_source_id`, and (b) observed at or
    before `captured_at`. Evidence observed after the capture time, evidence not bound to the
@@ -266,15 +268,28 @@ in order:
 **Trust gate.** If the caller supplies verifier trust roots, replay additionally requires the
 manifest to carry a signature from a trusted key (`SIGNATURE_UNTRUSTED` otherwise). This makes
 both signature stripping and signature replacement block replay for callers who pin trust roots.
-Without pinned roots, replay proceeds on integrity alone — an unsigned pack is replayable, which
-is a property of integrity, not an endorsement.
+Without pinned roots, an unsigned pack is not endorsed — and since round 3 (2026-11-13) a
+replay with neither a pin nor pinned roots is refused by default (`PINLESS_REPLAY_REFUSED`),
+so "replay proceeds on integrity alone" no longer holds unless the caller explicitly opts in
+(`--allow-pinless-replay` / `allow_pinless=True`).
+
+**No anchor, no replay (by default).** Rule 2 and the trust gate are the only anchors. Without a
+pin and without trust roots, a different valid pack is indistinguishable in-pack from the
+expected pack (measured 0/60 `REPLAY_OK` under the old default; see
+`docs/THREAT_MODEL.md` §8). Since round 3 the default is fail-closed: `replay_snapshot`
+refuses such a replay with `PINLESS_REPLAY_REFUSED` (CLI exit 2) instead of returning
+`REPLAY_OK`. The explicit opt-in (`--allow-pinless-replay` / `allow_pinless=True`) exists
+only for callers that need a self-consistency / snapshot-coherence check; an opt-in
+`REPLAY_OK` still carries an explicit no-anchor note in `reasons` and must never be
+presented as proof of the expected pack. This is by design: `pack_digest` is a self-digest,
+so no in-pack check can distinguish the expected pack from a coherent substitute.
 
 **Status vocabulary** (exactly one): `REPLAY_OK`, `PACK_INVALID`, `PACK_HASH_CHANGED`,
-`SIGNATURE_UNTRUSTED`, `SNAPSHOT_INVALID` (the snapshot boundary itself is unusable, e.g. an
-unparseable `captured_at`), `SNAPSHOT_LEAK`.
+`SIGNATURE_UNTRUSTED`, `PINLESS_REPLAY_REFUSED` (no pin, no trust roots, no explicit opt-in),
+`SNAPSHOT_INVALID` (the snapshot boundary itself is unusable, e.g. an unparseable `captured_at`), `SNAPSHOT_LEAK`.
 
 **CLI exit codes** (`oev pack replay`): `0` `REPLAY_OK`; `1` input error or `PACK_INVALID`;
-`2` every other refusal.
+`2` every other refusal (including `PINLESS_REPLAY_REFUSED`).
 
 Replay safety is still technical integrity only: it says *which evidence a replay may consume
 and which pack bytes it may consume them from*. It does not assert that the snapshot was honest,
