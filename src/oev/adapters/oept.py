@@ -16,6 +16,7 @@ import zipfile
 from typing import Any
 
 from oev.adapters.base import OptionalDependencyMissingError, PackageAdapter
+from oev.domain import DOMAIN_CHECK_IDS, evaluate_domain_checks
 from oev.hashing import sha256_bytes
 from oev.models import (
     CheckResult,
@@ -31,7 +32,7 @@ SUPPORTED_CHECKS = {
     "manifest_structure",
     "member_digests",
     "application_signature",
-}
+} | set(DOMAIN_CHECK_IDS)
 
 
 def is_oept_available() -> bool:
@@ -238,7 +239,33 @@ class OEPTAdapter(PackageAdapter):
                 )
             )
 
-        # 5. Unsupported checks
+        # 5. Domain checks (fin.* / ds.* / ai.*) — real computation over
+        # the bundle's domain members, dispatched to oev.domain. A bundle
+        # that failed structural verification cannot start domain checks.
+        domain_requested = all_requested & set(DOMAIN_CHECK_IDS)
+        domain_prefixed = {c for c in all_requested if c.startswith(("fin.", "ds.", "ai."))}
+        if domain_requested or domain_prefixed:
+            if status_code in ("UNSAFE_ARCHIVE", "MALFORMED_BUNDLE", "UNSUPPORTED_SPEC_VERSION"):
+                for chk in sorted(domain_requested | domain_prefixed):
+                    results.append(
+                        CheckResult(
+                            check_id=chk,
+                            category="domain",
+                            status=CheckStatus.NOT_RUN,
+                            detail="Bundle failed structural verification; "
+                            "domain checks were not started",
+                            duration_ms=duration_ms,
+                        )
+                    )
+            else:
+                try:
+                    with zipfile.ZipFile(io.BytesIO(package_bytes)) as zf:
+                        members = {n: zf.read(n) for n in zf.namelist()}
+                except (zipfile.BadZipFile, KeyError, OSError):
+                    members = {}
+                results.extend(evaluate_domain_checks(members, profile))
+
+        # 6. Unsupported checks
         for chk in all_requested:
             if chk not in SUPPORTED_CHECKS:
                 results.append(

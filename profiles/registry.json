@@ -86,6 +86,48 @@
       "core_changes_required": false,
       "registered_at": "2026-11-01",
       "note": "Draft per PROFILE-REGISTRY rules: profile document is schema-valid and uses only adapter-supported checks; domain-specific vectors require the domain adapter before promotion to registered."
+    },
+    {
+      "profile_id": "financial-evidence-verify",
+      "profile_version": "0.1.0",
+      "profile_number": 6,
+      "domain": "financial evidence (invoice / ERP / payment matching)",
+      "status": "draft",
+      "spec": "profiles/financial-evidence/profile.json",
+      "vectors": {
+        "note": "domain vectors: tests/test_domain_profiles.py (financial cases) + tests/test_domain_profiles_e2e.py (signed-bundle E2E); 8 domain checks fin.* implemented by oev.domain.financial"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-13",
+      "note": "Draft: profile document is schema-valid and its domain vectors pass, but promotion to registered awaits a governance decision — the real check engine lives in new adapter-level modules (oev.domain.*, OEPT adapter dispatch), not in the OEVP core (engine.py / receipts.py / models.py untouched), which is a deliberate, documented exception to the registry's no-src-change rule for this P2 task."
+    },
+    {
+      "profile_id": "dataset-release-verify",
+      "profile_version": "0.1.0",
+      "profile_number": 7,
+      "domain": "dataset release (schema / rows / checksum / version)",
+      "status": "draft",
+      "spec": "profiles/dataset-release/profile.json",
+      "vectors": {
+        "note": "domain vectors: tests/test_domain_profiles.py (dataset cases) + tests/test_domain_profiles_e2e.py (signed-bundle E2E); 6 domain checks ds.* implemented by oev.domain.dataset"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-13",
+      "note": "Draft: see financial-evidence-verify — same governance note on the adapter-level domain engine (oev.domain.dataset)."
+    },
+    {
+      "profile_id": "ai-model-eval-verify",
+      "profile_version": "0.1.0",
+      "profile_number": 8,
+      "domain": "AI model evaluation (independent metric recomputation)",
+      "status": "draft",
+      "spec": "profiles/ai-model-eval/profile.json",
+      "vectors": {
+        "note": "domain vectors: tests/test_domain_profiles.py (AI-eval cases) + tests/test_domain_profiles_e2e.py (signed-bundle E2E); 6 domain checks ai.* implemented by oev.domain.ai_eval"
+      },
+      "core_changes_required": false,
+      "registered_at": "2026-11-13",
+      "note": "Draft: see financial-evidence-verify — same governance note on the adapter-level domain engine (oev.domain.ai_eval). Reported metrics are recomputed from y_true/y_pred, never taken at face value."
     }
   ],
   "acceptance_criteria": {
