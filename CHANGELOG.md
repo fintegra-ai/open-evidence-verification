@@ -40,6 +40,124 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replay, CLI, or witness code); enforced by
   `tests/test_hea_verifier_independence.py`.
 
+### Planned for 0.3.0 — DRAFT (not released; version fields still 0.2.3)
+
+> Draft entry prepared 2026-11-13 (worker E, round 3 P4; version number
+> revised 2026-11-13, round 4 P5). The version bump itself is a separate,
+> Enes-gated step — see `docs/BRANCH_AND_COMMIT_PLAN_V4.md` (commit
+> OEVP-12). Do not publish from this entry alone.
+>
+> **Why 0.3.0, not 0.2.4 (round-3 draft):** the pin-less replay refusal
+> documented below under "Changed" is a backwards-incompatible behaviour
+> change (callers relying on unpinned `REPLAY_OK` now get
+> `PINLESS_REPLAY_REFUSED`). This project versions pre-1.0 `0.x.y` with
+> breaking changes landing in minor releases (see OEPT `CHANGELOG.md`:
+> "breaking changes may land in minor releases until 1.0"), so the next
+> OEVP release is a **minor** bump. Everything else in this entry is
+> additive (new opt-in layers) or fixes. OEPT stays 0.1.4 (patch:
+> additive + fixes only).
+
+#### Added (round 4, Tur 4)
+
+- Receipt freshness layer (`oev.receipt_status`, schema
+  `oev-receipt-status/0.1`): signed status snapshots (CURRENT / STALE /
+  SUPERSEDED / REVOKED) + relying-party `FreshnessPolicy` (default
+  fail-closed: 90 days, `require_current=True`). Plain re-verification
+  is unchanged — a stale/superseded receipt still re-verifies `MATCH`;
+  the freshness dimension is reported separately and `overall_decision`
+  is REJECT unless the receipt is fresh CURRENT. Snapshot-less receipts
+  (including all pre-Tur-4 receipts) assess `UNKNOWN_FRESHNESS` /
+  REJECT under the default policy.
+- Real RFC 3161 TSA layer (`oev.tsa_real`): `TimeStampReq` DER +
+  `TimeStampToken` verification against live TSAs (freetsa.org,
+  DigiCert, Sectigo — measured end-to-end), `claimed_time` vs `genTime`
+  check (a consistent backdate/future date with a real token is now
+  caught), mock tokens never prove time (`time_proven=False`),
+  `time_proven` / `execution_proven` reported separately. OCSP/CRL
+  revocation checking is NOT implemented (open gap).
+- Independent-evidence corroboration (`oev.corroboration`, schema
+  `oev-corroboration/0.1`): `SOURCE_MISMATCH` when a trusted
+  independent source disagrees with the bundle's claim (staged
+  consistent lie caught), `SOURCE_UNCORROBORATED` when no source
+  exists (openly uncorroborated, not a detection),
+  `SOURCE_REJECTED` on forged/unknown sources, `SELF_CORROBORATION`
+  when the producer/witness poses as an external source.
+- Model B2 hardening (still a prototype: same host, separate trust
+  domains — no physical/administrative independence): localhost mTLS
+  channel (TLS 1.3, separate keystores), signed witness authorisation
+  (`oev.b2_signed_auth`), signed completeness statements
+  (`oev.b2_completeness`) and a `DISPROVEN` completeness path
+  (`oev.b2_disproven`): unknown execution id → `DISPROVEN`, real id →
+  `UNPROVEN`. Compromised-witness detection pre-revocation is still
+  impossible (S4, both models).
+- Cross-version interop measured (round 4 P5): PyPI OEPT 0.1.3 / OEVP
+  0.2.3 verify/re-verify bundles and receipts produced by this tree
+  (`VALID_SIGNED` / `MATCH`) and vice versa.
+
+#### Fixed (round 4, Tur 4)
+
+- mypy: 7 errors in the round-4 B2 files (`b2_keystore.py`,
+  `b2_mtls.py`) fixed by type narrowing (rotation-record `None` guard,
+  RSA-only test-CA key check, `getpeercert()` `None` guards, one
+  removed unused `type: ignore`). `mypy src/oev` is clean again
+  (50 files).
+- Bandit B310: `request_timestamp` now refuses non-HTTP(S) TSA URLs
+  (`file:` etc.) before `urlopen`; the audited call site carries a
+  `nosec B310` with the justification. Bandit: 0 Medium / 0 High
+  (18 Low, all false-positive class: enum-string B105, asserts,
+  fixed-argv subprocess).
+
+#### Added
+
+- H2 attestation-omission coverage expanded: HEA vectors hea-18 (omit 3
+  of 4), hea-19 (omit first only), hea-20 (NOT_RUN needs no attestation);
+  HEA vectors now 20/20.
+- JCS convergence with the independent Node.js verifier and OEPT:
+  finite floats accepted on all sides per RFC 8785 §3.2.2.3 (non-finite
+  rejected), lone surrogates rejected on all sides per §3.2.2.2,
+  duplicate JSON members rejected everywhere (including the OEPT
+  trust-keys loader gap), invalid UTF-8 rejected with structured errors.
+  Three-way differential 403/403, full differential 610/610, zero open
+  divergences (`docs/JCS_MISMATCH_LIST.md`).
+- Witness authorisation + code-digest schemas (`oev-witness-authorization/0.1`,
+  `oev-code-digest/0.1`): `code_version` carries optional `policy_digest`,
+  `dependencies[]`, `environment{}`; verifier Step 3b compares a supplied
+  code-digest document (`CODE_DIGEST_MISMATCH`), Step 4 enforces
+  authorisation fail-closed under `--require-witness-authorization`
+  (`WITNESS_UNAUTHORIZED`). Defaults unchanged (missing document is a note).
+- Model B2 prototype (v0.2 work, separate-machine re-executing witness):
+  the witness receives bundle + profile bytes itself, re-executes the
+  checks and compares per-check results with the producer's claims
+  (`src/oev/b2_witness.py`, `b2_verify.py`, `b2_worker.py`); mock TSA
+  (RFC 3161 `TimeStampReq` format + offline mock timestamp tokens,
+  `src/oev/tsa.py`) — no network use, no real TSA.
+- Domain profile engines (real computation, adapter-level): financial
+  evidence (`fin.*`, 7 required + 1 optional), dataset release (`ds.*`,
+  5 + 1), AI model evaluation (`ai.*`, 5 + 1) in `src/oev/domain/`,
+  dispatched by the OEPT adapter; the three profiles are registered as
+  **draft** (#6–8) pending a governance decision on adapter-level engines.
+
+#### Fixed
+
+- Unsigned-K4 int-range gap: the `|n| ≤ 2**53−1` check now runs on the
+  unsigned path too (reference + Node verifiers); K4 probe 11/11.
+- Malformed `claimed_time` in a validly signed attestation crashed the
+  verifier (`ValueError`); timestamps are now validated semantically and a
+  malformed time is a controlled rejection
+  (`HISTORICAL_EXECUTION_UNPROVEN / MALFORMED_ATTESTATION`). Backdating
+  (a well-formed false time) is still not prevented — TSA is v0.2 work.
+
+#### Changed
+
+- Pin-less replay is now refused by default: `replay_snapshot` returns
+  `PINLESS_REPLAY_REFUSED` (CLI exit 2) when no pin and no trust roots
+  were supplied and the caller did not explicitly opt in
+  (`--allow-pinless-replay` / `allow_pinless=True`); an opt-in `REPLAY_OK`
+  still carries the explicit no-anchor note. Measured behaviour unchanged:
+  with a pin 60/60 `PACK_HASH_CHANGED`, without a pin 0/60 under the old
+  default. Spec updated: `spec/threat-model.md`,
+  `spec/decision-pack-spec.md` §8.
+
 ## [0.2.3] — 2026-11-02
 
 ### Fixed
