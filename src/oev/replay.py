@@ -15,6 +15,29 @@ Replay safety contract:
 - Leak refusal: if a recorded rule run consumed evidence observed after the
   snapshot was captured, the recorded history contradicts the snapshot and the
   replay refuses (SNAPSHOT_LEAK) instead of silently re-scoping.
+- No anchor, no replay protection: the pin (``expected_pack_digest``) and the
+  caller-supplied trust roots are the only anchors that bind a replay to *the*
+  pack the caller originally accepted. Without either, a different,
+  individually valid pack replays as REPLAY_OK — the pack digest is a
+  self-digest, so any self-consistent pack verifies against itself, and
+  snapshot isolation / leak checks are intra-pack coherence checks that a
+  coherent substitute pack also passes. This is by design, not a bug, and
+  pin-less REPLAY_OK results carry an explicit no-anchor note in ``reasons``
+  so the limitation is visible in the artifact itself, not only in the docs.
+  Callers that need replay protection MUST supply a pin (``pin_pack()``) or
+  trust roots. A pack verification receipt does not change this: an unsigned
+  receipt for a substitute pack is as forgeable as the pack itself, and a
+  receipt signed by a trusted verifier key is the same trust class as the
+  trust-store anchor — it adds no new security property, so no receipt
+  parameter was added to the replay API.
+
+  Round 3 (P0) tightens the default: an unanchored replay is now REFUSED
+  (``PINLESS_REPLAY_REFUSED``) unless the caller explicitly opts in with
+  ``allow_pinless=True`` (API) or ``--allow-pinless-replay`` (CLI). The
+  opt-in exists for the measured benchmark case (a different valid pack
+  replays REPLAY_OK, 0/60 detection) and for callers that only need a
+  self-consistency check; a security-critical caller must never pass it,
+  and the opt-in result still carries PINLESS_REPLAY_NOTE.
 
 Integrity boundary: this module is a safety gate over recorded evidence. It
 does not re-execute rules and does not assert factual truth, commercial truth,
@@ -45,6 +68,19 @@ PACK_HASH_CHANGED = "PACK_HASH_CHANGED"
 SIGNATURE_UNTRUSTED = "SIGNATURE_UNTRUSTED"
 SNAPSHOT_INVALID = "SNAPSHOT_INVALID"
 SNAPSHOT_LEAK = "SNAPSHOT_LEAK"
+# Round 3 (P0): unanchored replay refused unless the caller explicitly
+# opts in (allow_pinless=True / --allow-pinless-replay).
+PINLESS_REPLAY_REFUSED = "PINLESS_REPLAY_REFUSED"
+
+# Attached to a REPLAY_OK result when the caller supplied neither a pin nor
+# trust roots. The replay then proves self-consistency + snapshot coherence
+# only — never that this is the pack the caller expected.
+PINLESS_REPLAY_NOTE = (
+    "No replay anchor was supplied (no pin digest, no trust roots): REPLAY_OK "
+    "here means the pack is self-consistent and snapshot-coherent only; it "
+    "does not prove this is the pack the caller expected. A different valid "
+    "pack also returns REPLAY_OK."
+)
 
 REASON_NOT_BOUND = "not_bound_to_snapshot"
 REASON_UNKNOWN_SOURCE = "unknown_snapshot_source"
@@ -100,9 +136,15 @@ class SnapshotReplayResult:
     """Outcome of a snapshot replay safety evaluation.
 
     replay_status is exactly one of:
-    - REPLAY_OK: pack intact, pinned digest matched, snapshot coherent, and no
-      recorded run consumed out-of-scope evidence. Per-run assessments may
-      still mark individual runs not replayable for non-leak reasons.
+    - REPLAY_OK: pack intact, pinned digest matched (or no anchor was
+      supplied — see PINLESS_REPLAY_NOTE, which is then attached to
+      ``reasons``), snapshot coherent, and no recorded run consumed
+      out-of-scope evidence. Per-run assessments may still mark individual
+      runs not replayable for non-leak reasons.
+    - PINLESS_REPLAY_REFUSED: no pin and no trust roots were supplied and
+      the caller did not explicitly opt into a pin-less replay
+      (``allow_pinless=True``); no replay verdict is given at all. This
+      is the default for unanchored calls since round 3 (P0).
     - PACK_INVALID: pack technical verification failed.
     - PACK_HASH_CHANGED: the recomputed pack digest differs from the pin.
     - SIGNATURE_UNTRUSTED: trust roots were supplied and the manifest is not
@@ -214,6 +256,7 @@ def replay_snapshot(
     pack_dir: str | Path,
     expected_pack_digest: str | None = None,
     trust_store: TrustStore | None = None,
+    allow_pinless: bool = False,
 ) -> SnapshotReplayResult:
     """Evaluate whether the snapshot of a pack may be safely replayed.
 
@@ -224,6 +267,15 @@ def replay_snapshot(
     If ``trust_store`` is supplied, the manifest must carry a signature from a
     trusted key (SIGNATURE_UNTRUSTED otherwise), so a stripped or replaced
     signature blocks replay for callers who pin trust roots.
+
+    If neither a pin nor trust roots are supplied, replay is REFUSED
+    (``PINLESS_REPLAY_REFUSED``) unless the caller explicitly opts in with
+    ``allow_pinless=True``. The opt-in exists for callers that only need a
+    self-consistency / snapshot-coherence check; it does NOT make the
+    replay prove the expected pack (measured 0/60 detection,
+    benchmarks/RESULTS.md §6), and the opt-in REPLAY_OK still carries
+    PINLESS_REPLAY_NOTE in ``reasons``. Security-critical callers must
+    supply a pin or trust roots and must never pass ``allow_pinless``.
     """
 
     pack_dir = Path(pack_dir)
@@ -271,6 +323,29 @@ def replay_snapshot(
                     "Trust roots were supplied but the manifest is not signed by a trusted key: "
                     + (verification.signer_note or "no trusted signature present")
                 )
+            ],
+        )
+
+    # Round 3 (P0): no anchor, no verdict. An unanchored replay cannot
+    # prove the expected pack, so it is refused unless the caller
+    # explicitly opts into a self-consistency-only check. The refusal
+    # comes after technical verification and the anchor checks above,
+    # so PACK_INVALID / PACK_HASH_CHANGED / SIGNATURE_UNTRUSTED keep
+    # their more specific meanings.
+    if expected_pack_digest is None and trust_store is None and not allow_pinless:
+        return _refused(
+            pack_dir,
+            PINLESS_REPLAY_REFUSED,
+            declared_digest,
+            "",
+            [
+                PINLESS_REPLAY_NOTE,
+                (
+                    "Replay refused: no pin digest and no trust roots were supplied. "
+                    "Supply --expect-pack-digest or --verifier-keys, or explicitly "
+                    "opt into a pin-less self-consistency check with "
+                    "--allow-pinless-replay (API: allow_pinless=True)."
+                ),
             ],
         )
 
@@ -382,6 +457,9 @@ def replay_snapshot(
         eligible_fact_ids=eligible,
         excluded_facts=excluded,
         run_assessments=run_assessments,
+        reasons=(
+            [PINLESS_REPLAY_NOTE] if expected_pack_digest is None and trust_store is None else []
+        ),
     )
 
 

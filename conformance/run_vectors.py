@@ -103,6 +103,12 @@ def _pack_replay_argv(vector: dict[str, Any]) -> list[str]:
     if "pin" in inputs:
         pin = json.loads((REPO_ROOT / inputs["pin"]).read_text(encoding="utf-8"))
         argv += ["--expect-pack-digest", pin["pack_digest"]]
+    if inputs.get("allow_pinless"):
+        # Round 3 (P0): an unanchored replay is refused by default; a vector
+        # that exercises snapshot semantics (not the anchor) opts in
+        # explicitly, exactly like a caller that only needs a
+        # self-consistency check.
+        argv += ["--allow-pinless-replay"]
     argv += ["--json"]
     return [str(a) for a in argv]
 

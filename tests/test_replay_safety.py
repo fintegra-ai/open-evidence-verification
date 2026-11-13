@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,8 @@ from oev.decision_pack import build_pack, sign_pack_manifest, verify_pack
 from oev.replay import (
     PACK_HASH_CHANGED,
     PACK_INVALID,
+    PINLESS_REPLAY_NOTE,
+    PINLESS_REPLAY_REFUSED,
     REASON_AFTER_CAPTURE,
     REASON_NOT_BOUND,
     REPLAY_OK,
@@ -182,7 +185,8 @@ def test_post_snapshot_evidence_never_enters_replay_scope(tmp_path: Path) -> Non
     out = tmp_path / "pack"
     build_pack(src, out, pack_id="pack-scope", created_at="2026-01-01T00:10:00Z")
 
-    result = replay_snapshot(out)
+    # Snapshot semantics under test; the pin-less opt-in is explicit here.
+    result = replay_snapshot(out, allow_pinless=True)
     assert result.replay_status == REPLAY_OK  # no leak: no run consumed fact-late
     assert result.eligible_fact_ids == ["fact-001"]
     excluded = {e.fact_id: e.reason for e in result.excluded_facts}
@@ -233,7 +237,7 @@ def test_replay_refuses_on_post_snapshot_leak(tmp_path: Path) -> None:
     # when the snapshot boundary is enforced.
     assert verify_pack(out).overall == "PACK_VALID"
 
-    result = replay_snapshot(out)
+    result = replay_snapshot(out, allow_pinless=True)
     assert result.replay_status == SNAPSHOT_LEAK
     assert "fact-late" not in result.eligible_fact_ids
     leaky = next(r for r in result.run_assessments if r.run_id == "run-leaky")
@@ -250,7 +254,7 @@ def test_fact_observed_exactly_at_capture_is_eligible(tmp_path: Path) -> None:
     # fact-001 is observed at 00:00:00Z, exactly the snapshot capture time.
     out = tmp_path / "pack"
     build_pack(src, out, pack_id="pack-boundary", created_at="2026-01-01T00:10:00Z")
-    result = replay_snapshot(out)
+    result = replay_snapshot(out, allow_pinless=True)
     assert "fact-001" in result.eligible_fact_ids
     assert result.replay_status == REPLAY_OK
 
@@ -273,8 +277,9 @@ def test_replay_with_trust_roots_requires_trusted_signature(tmp_path: Path) -> N
     assert result.replay_status == SIGNATURE_UNTRUSTED
     assert any("not signed by a trusted key" in r for r in result.reasons)
 
-    # Without pinned roots an unsigned pack still replays (integrity only).
-    assert replay_snapshot(pack_dir).replay_status == REPLAY_OK
+    # Without pinned roots an unsigned pack is now refused by default
+    # (round 3, P0): no anchor, no verdict — integrity alone is not a replay.
+    assert replay_snapshot(pack_dir).replay_status == PINLESS_REPLAY_REFUSED
 
 
 def test_replay_refuses_on_unparseable_captured_at(tmp_path: Path) -> None:
@@ -350,3 +355,134 @@ def test_replay_works_on_copied_pack_directory(tmp_path: Path) -> None:
         trust_store=TrustStore.from_file(clean / "verifier-keys.json"),
     )
     assert result.replay_status == REPLAY_OK
+
+
+def test_pinless_replay_of_different_valid_pack_returns_ok_with_no_anchor_note(
+    tmp_path: Path,
+) -> None:
+    """Decision (b) as an explicit opt-in (round 3, P0): pin-less replay is
+    unprotected, and the result says so.
+
+    A coherently rewritten pack is a different, individually valid pack
+    (verify_pack: PACK_VALID). Without a pin it replays REPLAY_OK — the
+    benchmark's 0/60 case — but ONLY with an explicit ``allow_pinless``
+    opt-in, and the result must carry the no-anchor note instead of a
+    bare REPLAY_OK. With the original pin it must refuse.
+    """
+
+    pack_dir = _build_tmp_pack(tmp_path)
+    pin = pin_pack(pack_dir)
+
+    doc = _mutate_member_doc(pack_dir, "findings.json")
+    doc["findings"][0]["severity"] = "CRITICAL"
+    _rewrite_member_and_manifest(pack_dir, "findings.json", doc)
+    assert verify_pack(pack_dir).overall == "PACK_VALID"
+
+    pinless = replay_snapshot(pack_dir, allow_pinless=True)
+    assert pinless.replay_status == REPLAY_OK
+    assert PINLESS_REPLAY_NOTE in pinless.reasons
+
+    pinned = replay_snapshot(pack_dir, expected_pack_digest=pin["pack_digest"])
+    assert pinned.replay_status == PACK_HASH_CHANGED
+
+
+def test_pinless_replay_labels_missing_anchor(tmp_path: Path) -> None:
+    """Even the original pack, replayed without any anchor, carries the note."""
+
+    pack_dir = _build_tmp_pack(tmp_path)
+    result = replay_snapshot(pack_dir, allow_pinless=True)
+    assert result.replay_status == REPLAY_OK
+    assert PINLESS_REPLAY_NOTE in result.reasons
+
+
+def test_pinless_replay_refused_by_default(tmp_path: Path) -> None:
+    """Round 3 (P0): an unanchored replay no longer silently returns REPLAY_OK.
+
+    Without a pin, trust roots, or an explicit opt-in, the call is
+    refused with PINLESS_REPLAY_REFUSED — and the refusal still carries
+    the no-anchor note so the reason is visible in the artifact.
+    """
+
+    pack_dir = _build_tmp_pack(tmp_path)
+    result = replay_snapshot(pack_dir)
+    assert result.replay_status == PINLESS_REPLAY_REFUSED
+    assert PINLESS_REPLAY_NOTE in result.reasons
+    assert result.pack_digest  # the pack was still verified first
+
+
+def test_pinless_refusal_after_pin_check(tmp_path: Path) -> None:
+    """Refusal ordering: a wrong pin still reports PACK_HASH_CHANGED, and
+    an invalid pack still reports PACK_INVALID — the pin-less refusal
+    does not mask the more specific verdicts."""
+
+    pack_dir = _build_tmp_pack(tmp_path)
+    wrong = replay_snapshot(pack_dir, expected_pack_digest="sha256:" + "0" * 64)
+    assert wrong.replay_status == PACK_HASH_CHANGED
+
+    (pack_dir / "facts.json").write_bytes(b"not json")
+    invalid = replay_snapshot(pack_dir)
+    assert invalid.replay_status == PACK_INVALID
+
+
+def test_anchored_replay_carries_no_anchor_note(tmp_path: Path) -> None:
+    """A pin, or trust roots alone, is an anchor: no no-anchor note."""
+
+    pack_dir = _build_tmp_pack(tmp_path)
+    pin = pin_pack(pack_dir)
+    pinned = replay_snapshot(pack_dir, expected_pack_digest=pin["pack_digest"])
+    assert pinned.replay_status == REPLAY_OK
+    assert PINLESS_REPLAY_NOTE not in pinned.reasons
+
+    private_pem, public_pem = generate_ed25519_keypair()
+    sign_pack_manifest(pack_dir, private_pem, key_id="replay-key")
+    keys = tmp_path / "keys.json"
+    keys.write_bytes(
+        canonicalize_json([{"key_id": "replay-key", "public_key_pem": public_pem.decode()}])
+    )
+    rooted = replay_snapshot(pack_dir, trust_store=TrustStore.from_file(keys))
+    assert rooted.replay_status == REPLAY_OK
+    assert PINLESS_REPLAY_NOTE not in rooted.reasons
+
+
+def _run_oev_cli(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    import os
+    import subprocess
+    import sys
+
+    src_dir = Path(__file__).resolve().parents[1] / "src"
+    env = dict(os.environ, PYTHONPATH=str(src_dir))
+    return subprocess.run(
+        [sys.executable, "-m", "oev.cli", *args],
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+        env=env,
+        check=False,
+    )
+
+
+def test_cli_pinless_replay_refused_by_default(tmp_path: Path) -> None:
+    """Round 3 (P0): `oev pack replay` without an anchor exits 2; the
+    explicit --allow-pinless-replay flag restores the old REPLAY_OK."""
+
+    pack_dir = _build_tmp_pack(tmp_path)
+    refused = _run_oev_cli(["pack", "replay", str(pack_dir), "--json"], tmp_path)
+    assert refused.returncode == 2
+    assert json.loads(refused.stdout)["replay_status"] == PINLESS_REPLAY_REFUSED
+
+    opted_in = _run_oev_cli(
+        ["pack", "replay", str(pack_dir), "--allow-pinless-replay", "--json"], tmp_path
+    )
+    assert opted_in.returncode == 0
+    assert json.loads(opted_in.stdout)["replay_status"] == REPLAY_OK
+
+
+def test_cli_pinned_replay_still_ok(tmp_path: Path) -> None:
+    pack_dir = _build_tmp_pack(tmp_path)
+    pin = pin_pack(pack_dir)
+    run = _run_oev_cli(
+        ["pack", "replay", str(pack_dir), "--expect-pack-digest", pin["pack_digest"], "--json"],
+        tmp_path,
+    )
+    assert run.returncode == 0
+    assert json.loads(run.stdout)["replay_status"] == REPLAY_OK

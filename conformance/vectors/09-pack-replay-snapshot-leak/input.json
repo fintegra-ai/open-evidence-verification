@@ -5,7 +5,8 @@
   "spec": "OEVP-1.0-draft",
   "source_fixture": "conformance/fixtures/09-pack-replay-snapshot-leak",
   "inputs": {
-    "pack": "conformance/fixtures/09-pack-replay-snapshot-leak/pack"
+    "pack": "conformance/fixtures/09-pack-replay-snapshot-leak/pack",
+    "allow_pinless": true
   },
   "note": "A recorded rule run consumed a fact observed after the snapshot capture (2026-10-01T09:00:00Z > captured_at 2026-10-01T08:00:00Z): the recorded history contradicts the snapshot boundary, so the entire replay refuses."
 }

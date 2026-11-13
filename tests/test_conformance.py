@@ -269,7 +269,9 @@ def test_conformance_fixture_09_pack_replay_snapshot_leak():
 
     # No pin: the pack itself verifies, but a recorded run consumed evidence
     # observed after the snapshot capture, so the replay refuses entirely.
-    result = replay_snapshot(fix_dir / "pack")
+    # The leak semantics are under test here, so the pin-less opt-in is
+    # explicit (round 3, P0: the default is PINLESS_REPLAY_REFUSED).
+    result = replay_snapshot(fix_dir / "pack", allow_pinless=True)
 
     assert result.replay_status == SNAPSHOT_LEAK == expected["replay_status"]
     assert "fact-901" not in result.eligible_fact_ids

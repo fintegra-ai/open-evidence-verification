@@ -44,6 +44,7 @@ from oev.pack_archive import (
 )
 from oev.replay import (
     PACK_HASH_CHANGED,
+    PINLESS_REPLAY_REFUSED,
     REPLAY_OK,
     SIGNATURE_UNTRUSTED,
     SNAPSHOT_LEAK,
@@ -429,7 +430,11 @@ def test_self_consistent_manifest_rebuild_without_signature(tmp_path: Path) -> N
     _rewrite_member_and_manifest(pack_dir, "timeline.json", doc)
 
     assert verify_pack(pack_dir).overall == "PACK_VALID"
-    assert replay_snapshot(pack_dir).replay_status == REPLAY_OK  # no pin, no proof
+    # Round 3 (P0): without a pin the replay is refused by default — no
+    # verdict at all. Only the explicit opt-in reproduces the old
+    # REPLAY_OK (self-consistency only, no proof it is the expected pack).
+    assert replay_snapshot(pack_dir).replay_status == PINLESS_REPLAY_REFUSED
+    assert replay_snapshot(pack_dir, allow_pinless=True).replay_status == REPLAY_OK
     result = replay_snapshot(pack_dir, expected_pack_digest=pin["pack_digest"])
     assert result.replay_status == PACK_HASH_CHANGED
 
@@ -518,13 +523,13 @@ def test_replay_in_place_injection_into_pinned_pack(tmp_path: Path) -> None:
     result = replay_snapshot(pack_dir, expected_pack_digest=pin["pack_digest"])
     assert result.replay_status == PACK_HASH_CHANGED
     # And even unpinned, the late fact itself never enters the replay scope.
-    unpinned = replay_snapshot(pack_dir)
+    unpinned = replay_snapshot(pack_dir, allow_pinless=True)
     assert "fact-injected-later" not in unpinned.eligible_fact_ids
 
 
 def test_replay_refuses_when_recorded_run_consumed_later_evidence(tmp_path: Path) -> None:
     pack_dir = _pack_with_late_fact(tmp_path, "leaky", consume=True)
-    result = replay_snapshot(pack_dir)
+    result = replay_snapshot(pack_dir, allow_pinless=True)
     assert result.replay_status == SNAPSHOT_LEAK
     assert "fact-after-snapshot" not in result.eligible_fact_ids
 

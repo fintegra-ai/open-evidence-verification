@@ -422,6 +422,7 @@ def cmd_pack_replay(args: argparse.Namespace) -> int:
             pack_dir,
             expected_pack_digest=args.expect_pack_digest or None,
             trust_store=trust_store,
+            allow_pinless=bool(getattr(args, "allow_pinless_replay", False)),
         )
     except (ReplayError, ValueError) as exc:
         sys.stderr.write(f"Error: replay safety evaluation failed: {exc}\n")
@@ -436,6 +437,12 @@ def cmd_pack_replay(args: argparse.Namespace) -> int:
         return 0
     if result.replay_status == "PACK_INVALID":
         return 1
+    if result.replay_status == "PINLESS_REPLAY_REFUSED":
+        sys.stderr.write(
+            "Error: pin-less replay refused (no --expect-pack-digest and no "
+            "--verifier-keys). Re-run with an anchor, or with "
+            "--allow-pinless-replay for a self-consistency-only check.\n"
+        )
     return 2
 
 
@@ -947,9 +954,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_pack_replay.add_argument("pack", help="Path to the pack directory")
     p_pack_replay.add_argument(
         "--expect-pack-digest",
-        help="Pinned pack digest ('sha256:<hex>'); replay refuses if the pack hash changed",
+        help="Pinned pack digest ('sha256:<hex>'); replay refuses if the pack hash changed. "
+        "Without this (and without --verifier-keys) replay is REFUSED unless "
+        "--allow-pinless-replay is given: REPLAY_OK then means self-consistent only.",
     )
     p_pack_replay.add_argument("--verifier-keys", help="Path to trusted manifest signer keys JSON")
+    p_pack_replay.add_argument(
+        "--allow-pinless-replay",
+        action="store_true",
+        help="Explicitly opt into a pin-less replay: REPLAY_OK then proves "
+        "self-consistency and snapshot coherence only, never that this is "
+        "the expected pack. Never use for security-critical replays.",
+    )
     p_pack_replay.add_argument("--json", action="store_true", help="Emit raw JSON")
     p_pack_replay.set_defaults(func=cmd_pack_replay)
 
