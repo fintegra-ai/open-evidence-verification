@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-03",
+  "scenario": "tampered-receipt",
+  "title": "Receipt check flipped after attestation is UNPROVEN (RESULT_CONFLICT)",
+  "description": "Receipt check archive_safety changed PASS -> FAIL and the receipt re-finalised; the witness attestation still says PASS."
+}

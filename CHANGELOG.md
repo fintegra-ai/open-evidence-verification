@@ -8,6 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Historical Execution Attestation (HEA) v0.1 Model A: pre-binding with
+  Execution ID (JCS + SHA-256), witness-signed execution commitments,
+  per-check Ed25519/DSSE attestations with mandatory limitations,
+  hash-chained execution log with Merkle inclusion proofs and signed
+  checkpoints, signed revocation lists, offline verification
+  (`HISTORICAL_EXECUTION_PROVEN / UNPROVEN / DISPROVEN` + `HeaReason`
+  codes), and the `oev hea attest|verify|log verify|revoke|disprove`
+  CLI. Re-verification (`MATCH / MISMATCH / CANNOT_REPRODUCE`) and
+  historical execution are reported as two separate dimensions, never
+  collapsed into one score.
+- HEA conformance vectors hea-01..hea-14
+  (`conformance/vectors-hea/`, 14/14 pass).
+- `TrustedKey` gains validity window, revocation flag, role, and
+  successor fields; witness keys must carry an expiry and a role.
+- `CheckStatus` semantics formalised (see
+  `docs/PROTOCOL_SECURITY_REVIEW.md` §3); missing-profile-check vs
+  failed-check are distinct findings.
+- OEPT: optional `execution_binding` manifest field (format-checked
+  only; a bundle cannot bind its own execution — see
+  `spec/OEPT-1.0-draft.md` §2 rule 7).
+
+### Security
+
+- Committed OEPT conformance test-only key is refused as a witness key
+  at three layers (witness construction, attestation signing,
+  verifier-side blocklist).
+- HEA verifier imports only protocol-core modules (no engine, adapter,
+  replay, CLI, or witness code); enforced by
+  `tests/test_hea_verifier_independence.py`.
+
 ## [0.2.3] — 2026-11-02
 
 ### Fixed

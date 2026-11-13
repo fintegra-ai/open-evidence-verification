@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-14",
+  "scenario": "disprove-never-executed",
+  "title": "Never-executed id with a complete signed log is DISPROVEN",
+  "description": "A complete signed log plus a signed completeness statement contains no EXECUTION_STARTED for the claimed execution id (all three \u00a77.2 conditions hold)."
+}

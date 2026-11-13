@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-02",
+  "scenario": "no-attestations",
+  "title": "Receipt without attestations is UNPROVEN (NO_ATTESTATION)",
+  "description": "Pre-HEA receipt: no attestation is bound to it. The receipt itself stays valid; historical execution is UNPROVEN."
+}

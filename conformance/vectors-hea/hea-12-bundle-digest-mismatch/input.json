@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-12",
+  "scenario": "bundle-digest-mismatch",
+  "title": "Different package bytes are UNPROVEN (BUNDLE_DIGEST_MISMATCH)",
+  "description": "Verification is run against package bytes that differ from the attested bundle digest."
+}

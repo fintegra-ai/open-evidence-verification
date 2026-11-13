@@ -95,6 +95,25 @@
       "items": {
         "type": "string"
       }
+    },
+    "historical_execution": {
+      "type": "string",
+      "description": "HEA dimension (oev-attestation/0.1): historical-execution verdict, reported separately from reproducibility and never merged into one score.",
+      "enum": [
+        "HISTORICAL_EXECUTION_PROVEN",
+        "HISTORICAL_EXECUTION_UNPROVEN",
+        "HISTORICAL_EXECUTION_DISPROVEN"
+      ]
+    },
+    "historical_execution_reason": {
+      "type": "string",
+      "description": "HEA reason code (see HeaReason); empty when the historical execution is proven."
+    },
+    "historical_execution_notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false

@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-05",
+  "scenario": "wrong-key-trusted-keyid",
+  "title": "Attestation signed with the wrong key under a trusted keyid is UNPROVEN (SIGNATURE_INVALID)",
+  "description": "Attestations re-signed with a different private key but the trusted witness keyid 'wit-1': cryptographic failure, not an unknown key."
+}

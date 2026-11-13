@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-01",
+  "scenario": "valid",
+  "title": "Valid witnessed execution is PROVEN",
+  "description": "Complete valid HEA bundle: pre-binding, witness commitment, per-check attestations, hash-chained log, signed checkpoint, receipt binding."
+}

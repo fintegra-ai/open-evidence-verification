@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-11",
+  "scenario": "test-only-key",
+  "title": "Committed test-only key as witness is UNPROVEN (ATTESTATION_UNTRUSTED)",
+  "description": "The OEPT conformance test-only key signs the attestations (envelopes produced outside the library, which refuses that key) and is wrongly present in the witness trust store. The verifier-side blocklist must still reject it: the key is skipped during verification, so the hinted keyid is trusted-but-unverifiable and the rejection surfaces as SIGNATURE_INVALID."
+}

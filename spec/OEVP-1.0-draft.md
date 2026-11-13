@@ -112,6 +112,13 @@ blocked status. The INDETERMINATE family of Faz B is covered by
 - Receipt authenticity without caller-pinned verifier keys (§4.3).
 - Rule correctness or re-execution (§6.2).
 - Any legal, compliance, or factual conclusion.
+- (HEA) That a claimed time is true: `claimed_time` is self-asserted
+  everywhere in HEA v0.1; backdating is not prevented. Log order comes
+  from `seq`, not from time. See `docs/THREAT_MODEL.md` and
+  `docs/PROTOCOL_SECURITY_REVIEW.md` §5 for the full list of
+  explicitly unprovable claims (same-machine staging, witness honesty,
+  non-equivocation, completeness without operator cooperation,
+  revocation freshness).
 
 ## 11. Conformance
 

@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-07",
+  "scenario": "tampered-log-event",
+  "title": "Tampered log event is UNPROVEN (LOG_ANCHOR_INVALID)",
+  "description": "One CHECK_COMPLETED event's claimed_time altered after the fact; the hash chain no longer links."
+}

@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-06",
+  "scenario": "missing-execution-started",
+  "title": "Log without EXECUTION_STARTED is UNPROVEN (LOG_ANCHOR_INVALID)",
+  "description": "Log chain rebuilt without the EXECUTION_STARTED event and re-checkpointed; the chain is valid but the execution has no start anchor."
+}

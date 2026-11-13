@@ -1,0 +1,79 @@
+{
+  "vector_set": "oev-hea-conformance-vectors",
+  "version": "0.1.0",
+  "spec_target": "docs/HISTORICAL_EXECUTION_ATTESTATION.md",
+  "runner": "conformance/run_hea_vectors.py",
+  "generated_from": "synthetic HEA bundles built in-process by the runner (fresh keys per run; expectations are outcome-based, not digest-based)",
+  "vectors": [
+    {
+      "id": "hea-01",
+      "scenario": "valid",
+      "status": "active"
+    },
+    {
+      "id": "hea-02",
+      "scenario": "no-attestations",
+      "status": "active"
+    },
+    {
+      "id": "hea-03",
+      "scenario": "tampered-receipt",
+      "status": "active"
+    },
+    {
+      "id": "hea-04",
+      "scenario": "unknown-witness-key",
+      "status": "active"
+    },
+    {
+      "id": "hea-05",
+      "scenario": "wrong-key-trusted-keyid",
+      "status": "active"
+    },
+    {
+      "id": "hea-06",
+      "scenario": "missing-execution-started",
+      "status": "active"
+    },
+    {
+      "id": "hea-07",
+      "scenario": "tampered-log-event",
+      "status": "active"
+    },
+    {
+      "id": "hea-08",
+      "scenario": "checkpoint-signed-by-witness-key",
+      "status": "active"
+    },
+    {
+      "id": "hea-09",
+      "scenario": "revoked-witness-key",
+      "status": "active"
+    },
+    {
+      "id": "hea-10",
+      "scenario": "expired-witness-key",
+      "status": "active"
+    },
+    {
+      "id": "hea-11",
+      "scenario": "test-only-key",
+      "status": "active"
+    },
+    {
+      "id": "hea-12",
+      "scenario": "bundle-digest-mismatch",
+      "status": "active"
+    },
+    {
+      "id": "hea-13",
+      "scenario": "profile-digest-mismatch",
+      "status": "active"
+    },
+    {
+      "id": "hea-14",
+      "scenario": "disprove-never-executed",
+      "status": "active"
+    }
+  ]
+}

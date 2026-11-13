@@ -12,8 +12,14 @@ from typing import Any
 from oev.adapters.base import OptionalDependencyMissingError
 from oev.canonical import canonicalize_json, safe_json_loads
 from oev.decision_pack import build_pack, sign_pack_manifest
-from oev.engine import execute_verification
+from oev.engine import execute_verification, utc_now_iso
 from oev.fileio import MAX_PACKAGE_BYTES, read_bounded_file
+from oev.hea import run_witnessed_verification
+from oev.hea_verifier import (
+    HeaVerificationInputs,
+    assess_disproven,
+    verify_historical_execution,
+)
 from oev.inspect import inspect_receipt_file
 from oev.models import OverallResult
 from oev.pack_verifier import (
@@ -24,8 +30,9 @@ from oev.pack_verifier import (
 )
 from oev.profiles import load_profile
 from oev.replay import ReplayError, replay_snapshot
-from oev.reverify import reverify_package
+from oev.reverify import _extract_receipt, reverify_package
 from oev.trust import TrustStore
+from oev.witness import LocalProcessWitness
 
 NOTICE_FOOTER = "Technical verification only — not a legal, compliance, or factual conclusion."
 INSPECTION_FOOTER = (
@@ -432,6 +439,374 @@ def cmd_pack_replay(args: argparse.Namespace) -> int:
     return 2
 
 
+def _load_json_file(path: Path) -> dict[str, Any]:
+    data = safe_json_loads(read_bounded_file(path))
+    if not isinstance(data, dict):
+        raise TypeError(f"Expected a JSON object in {path}")
+    return data
+
+
+def _load_trust_store(path_str: str | None) -> TrustStore | None:
+    if not path_str:
+        return None
+    store_path = Path(path_str)
+    if not store_path.is_file():
+        sys.stderr.write(f"Error: trust keys file not found: {store_path}\n")
+        raise FileNotFoundError(str(store_path))
+    return TrustStore.from_file(store_path)
+
+
+def cmd_hea_attest(args: argparse.Namespace) -> int:
+    package_path = Path(args.package)
+    profile_path = Path(args.profile)
+    out_dir = Path(args.out)
+    for label, path in (("package", package_path), ("profile", profile_path)):
+        if not path.is_file():
+            sys.stderr.write(f"Error: {label} file not found: {path}\n")
+            return 1
+    witness_key_path = Path(args.witness_key)
+    if not witness_key_path.is_file():
+        sys.stderr.write(f"Error: witness key file not found: {witness_key_path}\n")
+        return 1
+    checkpoint_key_path = Path(args.checkpoint_key)
+    if not checkpoint_key_path.is_file():
+        sys.stderr.write(f"Error: checkpoint key file not found: {checkpoint_key_path}\n")
+        return 1
+    package_trust_keys: list[dict[str, Any]] | None = None
+    if args.trust_keys:
+        tk_path = Path(args.trust_keys)
+        if not tk_path.is_file():
+            sys.stderr.write(f"Error: package trust keys file not found: {tk_path}\n")
+            return 1
+        package_trust_keys = safe_json_loads(read_bounded_file(tk_path))
+    receipt_signing_key: bytes | None = None
+    if args.sign_receipt:
+        sk_path = Path(args.sign_receipt)
+        if not sk_path.is_file():
+            sys.stderr.write(f"Error: receipt signing key file not found: {sk_path}\n")
+            return 1
+        receipt_signing_key = read_bounded_file(sk_path)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with LocalProcessWitness(
+            private_key_path=witness_key_path,
+            key_id=args.witness_key_id,
+            log_path=out_dir / "execution-log.jsonl",
+            log_id=args.log_id or "hea-log-001",
+            checkpoint_key_path=checkpoint_key_path,
+            checkpoint_key_id=args.checkpoint_key_id,
+        ) as witness:
+            summary = run_witnessed_verification(
+                package_path=package_path,
+                profile_path=profile_path,
+                witness=witness,
+                out_dir=out_dir,
+                package_trust_keys=package_trust_keys,
+                receipt_signing_key_pem=receipt_signing_key,
+                receipt_signer_key_id=args.signer_key_id or "",
+                adapter_label=args.adapter_label or "oept 0.1.3",
+            )
+    except (ValueError, RuntimeError, TimeoutError) as exc:
+        sys.stderr.write(f"Error: witnessed verification failed: {exc}\n")
+        return 1
+
+    if args.json:
+        print(canonicalize_json(summary).decode("utf-8"))
+    else:
+        print("=" * 70)
+        print("OEVP WITNESSED VERIFICATION (HEA Model A — local process witness)")
+        print("=" * 70)
+        print(f"Execution ID:    {summary['execution_id']}")
+        print(f"Overall Result:  {summary['overall_result']}")
+        print(f"Receipt Digest:  {summary['receipt_digest']}")
+        print(f"Attested checks: {', '.join(summary['attested_checks'])}")
+        print(f"Output dir:      {summary['out_dir']}")
+        print("=" * 70)
+        print("Time is NOT proven: claimed_time is self-asserted; ordering comes")
+        print("from log sequence only. Model A witness: separate process, same")
+        print("machine; no protection against machine compromise.")
+        print(f"{NOTICE_FOOTER}")
+    return 0 if summary["overall_result"] == OverallResult.TECHNICAL_CHECKS_PASSED.value else 2
+
+
+def cmd_hea_verify(args: argparse.Namespace) -> int:
+    package_path = Path(args.package)
+    receipt_path = Path(args.receipt)
+    profile_path = Path(args.profile)
+    attest_dir = Path(args.attestations)
+    log_path = Path(args.log)
+    checkpoint_path = Path(args.checkpoint)
+    for label, path in (
+        ("package", package_path),
+        ("receipt", receipt_path),
+        ("profile", profile_path),
+        ("log", log_path),
+        ("checkpoint", checkpoint_path),
+    ):
+        if not path.is_file():
+            sys.stderr.write(f"Error: {label} file not found: {path}\n")
+            return 1
+    if not attest_dir.is_dir():
+        sys.stderr.write(f"Error: attestations directory not found: {attest_dir}\n")
+        return 1
+
+    try:
+        witness_store = _load_trust_store(args.witness_keys)
+        checkpoint_store = _load_trust_store(args.checkpoint_keys)
+    except FileNotFoundError:
+        return 1
+    if witness_store is None or checkpoint_store is None:
+        sys.stderr.write("Error: --witness-keys and --checkpoint-keys are required\n")
+        return 1
+
+    try:
+        package_bytes = read_bounded_file(package_path, MAX_PACKAGE_BYTES)
+        receipt = _extract_receipt(receipt_path)
+        profile = load_profile(profile_path)
+        attestations = [_load_json_file(p) for p in sorted(attest_dir.glob("*.dsse.json"))]
+        from oev.execution_log import events_from_jsonl
+
+        log_events = events_from_jsonl(read_bounded_file(log_path, MAX_PACKAGE_BYTES))
+        checkpoint_envelope = _load_json_file(checkpoint_path)
+        prebinding: dict[str, Any] | None = None
+        commitment_envelope: dict[str, Any] | None = None
+        inclusion_proofs: dict[str, list[dict[str, str]]] | None = None
+        expected_code_digest: str | None = args.code_digest
+        prebinding_path = attest_dir.parent / "prebinding.json"
+        commitment_path = attest_dir.parent / "commitment.dsse.json"
+        manifest_path = attest_dir.parent / "hea-manifest.json"
+        if prebinding_path.is_file():
+            prebinding = _load_json_file(prebinding_path)
+        if commitment_path.is_file():
+            commitment_envelope = _load_json_file(commitment_path)
+        if manifest_path.is_file():
+            manifest = _load_json_file(manifest_path)
+            inclusion_proofs = {
+                str(k): [dict(s) for s in v]
+                for k, v in dict(manifest.get("inclusion_proofs", {})).items()
+            }
+            if expected_code_digest is None:
+                expected_code_digest = str(manifest.get("code_digest") or "") or None
+    except (ValueError, TypeError, KeyError, OSError) as exc:
+        sys.stderr.write(f"Error: failed to load HEA inputs: {exc}\n")
+        return 1
+
+    revocation_list = None
+    if args.revocation_list:
+        from oev.revocation import verify_revocation_list
+
+        try:
+            authority_store = _load_trust_store(args.revocation_keys)
+            envelope = _load_json_file(Path(args.revocation_list))
+            revocation_list, note = verify_revocation_list(envelope, authority_store)
+            if revocation_list is None:
+                print(f"Note: revocation list not honoured: {note}")
+        except (ValueError, FileNotFoundError) as exc:
+            sys.stderr.write(f"Error: revocation list failed to load: {exc}\n")
+            return 1
+
+    reverification_result: str | None = None
+    if args.reverify:
+        package_trust_keys: list[dict[str, Any]] | None = None
+        if args.trust_keys:
+            package_trust_keys = safe_json_loads(read_bounded_file(Path(args.trust_keys)))
+        try:
+            report = reverify_package(
+                package_bytes=package_bytes,
+                receipt_source=receipt_path,
+                profile_source=profile,
+                package_trust_keys=package_trust_keys,
+            )
+            reverification_result = report.reverification_result
+        except OptionalDependencyMissingError as exc:
+            sys.stderr.write(f"Error: {exc}\n")
+            return 1
+
+
+    result = verify_historical_execution(
+        HeaVerificationInputs(
+            package_bytes=package_bytes,
+            receipt=receipt,
+            profile=profile,
+            attestations=attestations,
+            commitment_envelope=commitment_envelope,
+            prebinding=prebinding,
+            log_events=log_events,
+            checkpoint_envelope=checkpoint_envelope,
+            inclusion_proofs=inclusion_proofs,
+            witness_trust_store=witness_store,
+            checkpoint_trust_store=checkpoint_store,
+            revocation_list=revocation_list,
+            expected_code_digest=expected_code_digest,
+            reverification_result=reverification_result,
+        )
+    )
+
+    if args.json:
+        print(canonicalize_json(result.to_dict()).decode("utf-8"))
+    else:
+        print("=" * 70)
+        print("OEVP HISTORICAL EXECUTION VERIFICATION (offline)")
+        print("=" * 70)
+        print(f"Historical execution: {result.historical_execution}")
+        print(f"Reason:               {result.reason or '(none — proven)'}")
+        print(f"Execution ID:         {result.execution_id}")
+        print(f"Witness mode:         {result.witness_mode}")
+        print(f"Receipt digest:       {result.receipt_digest}")
+        if result.reverification_result is not None:
+            print(f"Reproducibility:      {result.reverification_result} (separate dimension)")
+        for entry in result.per_check:
+            print(f"  - {entry['check_id']}: {entry['hea_result']}")
+        if result.notes:
+            print("Notes:")
+            for note in result.notes:
+                print(f"  * {note}")
+        print("=" * 70)
+        print(f"{NOTICE_FOOTER}")
+    return 0 if result.historical_execution == "HISTORICAL_EXECUTION_PROVEN" else 1
+
+
+def cmd_hea_log_verify(args: argparse.Namespace) -> int:
+    log_path = Path(args.log)
+    if not log_path.is_file():
+        sys.stderr.write(f"Error: log file not found: {log_path}\n")
+        return 1
+    try:
+        from oev.execution_log import (
+            events_from_jsonl,
+            merkle_root,
+            verify_checkpoint_signature,
+            verify_event_chain,
+        )
+
+        events = events_from_jsonl(read_bounded_file(log_path, MAX_PACKAGE_BYTES))
+        chain_ok, chain_note = verify_event_chain(events)
+        report: dict[str, Any] = {
+            "event_count": len(events),
+            "chain_valid": chain_ok,
+            "chain_note": chain_note,
+            "merkle_root": merkle_root([e.leaf_hash() for e in events]),
+        }
+        if args.checkpoint:
+            checkpoint_path = Path(args.checkpoint)
+            if not checkpoint_path.is_file():
+                sys.stderr.write(f"Error: checkpoint file not found: {checkpoint_path}\n")
+                return 1
+            store = _load_trust_store(args.checkpoint_keys)
+            checkpoint, reason = verify_checkpoint_signature(
+                _load_json_file(checkpoint_path), store
+            )
+            report["checkpoint_valid"] = checkpoint is not None and reason == ""
+            report["checkpoint_reason"] = reason
+            if checkpoint is not None:
+                report["checkpoint_leaf_count"] = checkpoint.leaf_count
+                report["checkpoint_merkle_root"] = checkpoint.merkle_root
+                report["merkle_root_matches_checkpoint"] = (
+                    report["merkle_root"] == checkpoint.merkle_root
+                    and len(events) == checkpoint.leaf_count
+                )
+    except (ValueError, TypeError, KeyError, OSError) as exc:
+        sys.stderr.write(f"Error: log verification failed: {exc}\n")
+        return 1
+    if args.json:
+        print(canonicalize_json(report).decode("utf-8"))
+    else:
+        print(f"Events: {report['event_count']}, chain valid: {report['chain_valid']}")
+        if report["chain_note"]:
+            print(f"Chain note: {report['chain_note']}")
+        print(f"Merkle root: {report['merkle_root']}")
+        if "checkpoint_valid" in report:
+            print(f"Checkpoint valid: {report['checkpoint_valid']} ({report['checkpoint_reason']})")
+            print(f"Root matches checkpoint: {report['merkle_root_matches_checkpoint']}")
+    ok = bool(report["chain_valid"])
+    if "checkpoint_valid" in report:
+        ok = (
+            ok
+            and bool(report["checkpoint_valid"])
+            and bool(report["merkle_root_matches_checkpoint"])
+        )
+    return 0 if ok else 1
+
+
+def cmd_hea_revoke(args: argparse.Namespace) -> int:
+    key_path = Path(args.key)
+    if not key_path.is_file():
+        sys.stderr.write(f"Error: signing key file not found: {key_path}\n")
+        return 1
+    from oev.revocation import RevocationEntry, build_revocation_list
+
+    try:
+        envelope = build_revocation_list(
+            entries=[
+                RevocationEntry(
+                    key_id=args.key_id,
+                    reason=args.reason,
+                    revoked_at_claimed=args.issued_at or utc_now_iso(),
+                )
+            ],
+            issuer_key_id=args.issuer_key_id,
+            issued_at_claimed=args.issued_at or utc_now_iso(),
+            private_key_pem=read_bounded_file(key_path),
+        )
+    except (ValueError, TypeError) as exc:
+        sys.stderr.write(f"Error: revocation list build failed: {exc}\n")
+        return 1
+    out_path = Path(args.out)
+    out_path.write_bytes(canonicalize_json(envelope))
+    print(f"Revocation list written to {out_path} (revoked key: {args.key_id})")
+    return 0
+
+
+def cmd_hea_disprove(args: argparse.Namespace) -> int:
+    log_path = Path(args.log)
+    checkpoint_path = Path(args.checkpoint)
+    completeness_path = Path(args.completeness)
+    for label, path in (
+        ("log", log_path),
+        ("checkpoint", checkpoint_path),
+        ("completeness", completeness_path),
+    ):
+        if not path.is_file():
+            sys.stderr.write(f"Error: {label} file not found: {path}\n")
+            return 1
+    try:
+        checkpoint_store = _load_trust_store(args.checkpoint_keys)
+        operator_store = _load_trust_store(args.completeness_keys)
+    except FileNotFoundError:
+        return 1
+    try:
+        from oev.execution_log import events_from_jsonl
+
+        events = events_from_jsonl(read_bounded_file(log_path, MAX_PACKAGE_BYTES))
+        checkpoint_envelope = _load_json_file(checkpoint_path)
+        completeness_envelope = _load_json_file(completeness_path)
+    except (ValueError, TypeError, KeyError, OSError) as exc:
+        sys.stderr.write(f"Error: failed to load DISPROVEN inputs: {exc}\n")
+        return 1
+    is_disproven, note = assess_disproven(
+        events,
+        checkpoint_envelope,
+        completeness_envelope,
+        args.execution_id,
+        checkpoint_store,
+        operator_store,
+    )
+    report = {
+        "execution_id": args.execution_id,
+        "historical_execution": (
+            "HISTORICAL_EXECUTION_DISPROVEN" if is_disproven else "HISTORICAL_EXECUTION_UNPROVEN"
+        ),
+        "note": note,
+    }
+    if args.json:
+        print(canonicalize_json(report).decode("utf-8"))
+    else:
+        print(f"Historical execution: {report['historical_execution']}")
+        print(f"Note: {note}")
+    return 0 if is_disproven else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="oev",
@@ -558,6 +933,113 @@ def build_parser() -> argparse.ArgumentParser:
     p_pack_replay.add_argument("--verifier-keys", help="Path to trusted manifest signer keys JSON")
     p_pack_replay.add_argument("--json", action="store_true", help="Emit raw JSON")
     p_pack_replay.set_defaults(func=cmd_pack_replay)
+
+    # 6. hea — Historical Execution Attestation (Model A, local-process witness)
+    p_hea = subparsers.add_parser(
+        "hea", help="Historical Execution Attestation operations (oev-attestation/0.1)"
+    )
+    hea_sub = p_hea.add_subparsers(dest="hea_subcommand", required=True)
+
+    p_hea_attest = hea_sub.add_parser(
+        "attest", help="Run a witnessed verification (Model A witness, separate process)"
+    )
+    p_hea_attest.add_argument("package", help="Path to evidence package")
+    p_hea_attest.add_argument("--profile", required=True, help="Path to verification profile JSON")
+    p_hea_attest.add_argument(
+        "--witness-key", required=True, help="Path to witness Ed25519 private key PEM"
+    )
+    p_hea_attest.add_argument("--witness-key-id", required=True, help="Witness key id")
+    p_hea_attest.add_argument(
+        "--checkpoint-key",
+        required=True,
+        help="Path to checkpoint-signer Ed25519 private key PEM (role-separated from the witness key)",
+    )
+    p_hea_attest.add_argument("--checkpoint-key-id", required=True, help="Checkpoint-signer key id")
+    p_hea_attest.add_argument("--out", required=True, help="Output directory for HEA artifacts")
+    p_hea_attest.add_argument("--trust-keys", help="Path to package trust roots JSON")
+    p_hea_attest.add_argument(
+        "--sign-receipt", help="Path to Ed25519 private key PEM to sign the receipt"
+    )
+    p_hea_attest.add_argument("--signer-key-id", help="Advisory key ID for the receipt envelope")
+    p_hea_attest.add_argument("--log-id", help="Log identifier (default hea-log-001)")
+    p_hea_attest.add_argument(
+        "--adapter-label", help="Human-readable adapter label for code_version"
+    )
+    p_hea_attest.add_argument("--json", action="store_true", help="Emit raw JSON")
+    p_hea_attest.set_defaults(func=cmd_hea_attest)
+
+    p_hea_verify = hea_sub.add_parser(
+        "verify", help="Offline verification of a historical execution (no network)"
+    )
+    p_hea_verify.add_argument("package", help="Path to evidence package")
+    p_hea_verify.add_argument(
+        "--receipt", required=True, help="Path to receipt JSON or DSSE envelope"
+    )
+    p_hea_verify.add_argument("--profile", required=True, help="Path to verification profile JSON")
+    p_hea_verify.add_argument(
+        "--attestations", required=True, help="Directory with per-check attestation DSSE files"
+    )
+    p_hea_verify.add_argument("--log", required=True, help="Path to execution log JSONL")
+    p_hea_verify.add_argument("--checkpoint", required=True, help="Path to checkpoint DSSE JSON")
+    p_hea_verify.add_argument(
+        "--witness-keys", required=True, help="Path to trusted witness keys JSON"
+    )
+    p_hea_verify.add_argument(
+        "--checkpoint-keys", required=True, help="Path to trusted checkpoint keys JSON"
+    )
+    p_hea_verify.add_argument("--revocation-list", help="Path to signed revocation list DSSE JSON")
+    p_hea_verify.add_argument(
+        "--revocation-keys", help="Path to trusted revocation-authority keys JSON"
+    )
+    p_hea_verify.add_argument("--code-digest", help="Expected code digest ('sha256:<hex>')")
+    p_hea_verify.add_argument(
+        "--trust-keys", help="Path to package trust roots JSON (for --reverify)"
+    )
+    p_hea_verify.add_argument(
+        "--reverify", action="store_true", help="Also run re-verification (separate dimension)"
+    )
+    p_hea_verify.add_argument("--json", action="store_true", help="Emit raw JSON")
+    p_hea_verify.set_defaults(func=cmd_hea_verify)
+
+    p_hea_log = hea_sub.add_parser("log", help="Execution log operations")
+    hea_log_sub = p_hea_log.add_subparsers(dest="hea_log_subcommand", required=True)
+    p_hea_log_verify = hea_log_sub.add_parser(
+        "verify", help="Verify a log hash-chain (and checkpoint, if given)"
+    )
+    p_hea_log_verify.add_argument("log", help="Path to execution log JSONL")
+    p_hea_log_verify.add_argument("--checkpoint", help="Path to checkpoint DSSE JSON")
+    p_hea_log_verify.add_argument("--checkpoint-keys", help="Path to trusted checkpoint keys JSON")
+    p_hea_log_verify.add_argument("--json", action="store_true", help="Emit raw JSON")
+    p_hea_log_verify.set_defaults(func=cmd_hea_log_verify)
+
+    p_hea_revoke = hea_sub.add_parser("revoke", help="Build a signed revocation list for one key")
+    p_hea_revoke.add_argument("--key-id", required=True, help="Key id to revoke")
+    p_hea_revoke.add_argument("--reason", required=True, help="Revocation reason")
+    p_hea_revoke.add_argument("--key", required=True, help="Path to issuer Ed25519 private key PEM")
+    p_hea_revoke.add_argument("--issuer-key-id", required=True, help="Issuer key id")
+    p_hea_revoke.add_argument("--issued-at", help="Issued time (claimed, YYYY-MM-DDTHH:MM:SSZ)")
+    p_hea_revoke.add_argument(
+        "--out", required=True, help="Output path for the revocation list DSSE"
+    )
+    p_hea_revoke.set_defaults(func=cmd_hea_revoke)
+
+    p_hea_disprove = hea_sub.add_parser(
+        "disprove", help="Assess HISTORICAL_EXECUTION_DISPROVEN for an execution id"
+    )
+    p_hea_disprove.add_argument("--execution-id", required=True, help="Execution id to assess")
+    p_hea_disprove.add_argument("--log", required=True, help="Path to execution log JSONL")
+    p_hea_disprove.add_argument("--checkpoint", required=True, help="Path to checkpoint DSSE JSON")
+    p_hea_disprove.add_argument(
+        "--checkpoint-keys", required=True, help="Path to trusted checkpoint keys JSON"
+    )
+    p_hea_disprove.add_argument(
+        "--completeness", required=True, help="Path to log completeness statement DSSE JSON"
+    )
+    p_hea_disprove.add_argument(
+        "--completeness-keys", required=True, help="Path to trusted log-operator keys JSON"
+    )
+    p_hea_disprove.add_argument("--json", action="store_true", help="Emit raw JSON")
+    p_hea_disprove.set_defaults(func=cmd_hea_disprove)
 
     return parser
 

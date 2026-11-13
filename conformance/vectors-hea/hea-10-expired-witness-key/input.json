@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-10",
+  "scenario": "expired-witness-key",
+  "title": "Expired witness key is UNPROVEN (WITNESS_KEY_EXPIRED)",
+  "description": "The witness key's not_after predates the attestation's claimed_time."
+}

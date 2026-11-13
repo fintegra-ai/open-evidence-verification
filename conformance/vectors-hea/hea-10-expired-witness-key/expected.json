@@ -1,0 +1,8 @@
+{
+  "vector_id": "hea-10",
+  "exit_code": 0,
+  "asserts": {
+    "historical_execution": "HISTORICAL_EXECUTION_UNPROVEN",
+    "reason": "WITNESS_KEY_EXPIRED"
+  }
+}

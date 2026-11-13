@@ -14,6 +14,37 @@ class CheckStatus(str, Enum):
 
     These distinctions must survive serialization. Do not add generic statuses
     like VERIFIED, SUCCESS, or UNKNOWN.
+
+    Formal semantics (HEA design §7.5; full table in
+    docs/PROTOCOL_SECURITY_REVIEW.md §C, taxonomy C1–C10):
+    - PASS: the check executed and its rule evaluated true on the inputs.
+    - FAIL: the check executed and its rule evaluated false. A FAIL is a
+      *completed* execution with a negative outcome, never an execution
+      failure; a proven FAIL execution is still a proven execution.
+    - NOT_RUN: the check was scheduled but never started (e.g. execution
+      interrupted first). No attestation may be produced for a NOT_RUN
+      check; its HEA state is HEA_NOT_APPLICABLE, not UNPROVEN.
+    - NOT_APPLICABLE: the check executed far enough to determine that its
+      rule does not apply to this package (e.g. no signature present to
+      verify). It is a completed evaluation, not a skipped one.
+    - UNVERIFIED: the check executed but its outcome could not be
+      established (e.g. no trust roots supplied to judge a signature).
+      UNVERIFIED is an *indeterminate outcome*, not a missing execution.
+    - UNSUPPORTED: the profile requires a capability this verifier build
+      cannot perform (e.g. no adapter for the format). The check was not
+      attempted because it cannot be attempted here.
+
+    Merging (``aggregate_overall_result`` in receipts.py — the single
+    normative merge): FAIL on a REQUIRED check dominates everything
+    (TECHNICAL_CHECKS_FAILED). Otherwise any REQUIRED check in
+    NOT_RUN / NOT_APPLICABLE / UNVERIFIED / UNSUPPORTED yields
+    PROFILE_UNSATISFIED. A missing check in the receipt is treated as
+    unsatisfied, never as PASS. OPTIONAL imperfections and material
+    limitations downgrade PASSED to PARTIAL. The six statuses are never
+    collapsed into one another: in particular FAIL, NOT_RUN,
+    NOT_APPLICABLE, UNVERIFIED and UNSUPPORTED are never merged into a
+    single "not passed" bucket — each keeps its own meaning, transition
+    and overall-result contribution.
     """
 
     PASS = "PASS"
@@ -22,6 +53,62 @@ class CheckStatus(str, Enum):
     NOT_APPLICABLE = "NOT_APPLICABLE"
     UNVERIFIED = "UNVERIFIED"
     UNSUPPORTED = "UNSUPPORTED"
+
+
+#: Human-readable meaning of each CheckStatus (single source of truth for
+#: documentation and verifier output; the enum docstring above is normative).
+CHECK_STATUS_MEANING: dict[str, str] = {
+    "PASS": "Check executed; rule evaluated true on the given inputs.",
+    "FAIL": "Check executed; rule evaluated false. A completed execution with a negative outcome.",
+    "NOT_RUN": "Check scheduled but never started; no execution exists to attest.",
+    "NOT_APPLICABLE": "Check evaluated far enough to determine its rule does not apply to this package.",
+    "UNVERIFIED": "Check executed but its outcome could not be established (e.g. missing trust roots).",
+    "UNSUPPORTED": "Check could not be attempted: this verifier build lacks the required capability.",
+}
+
+#: Which CheckStatus values count as "the check ran to a verdict" (a
+#: verdict may be negative). NOT_RUN is the only status with no execution.
+CHECK_STATUS_EXECUTED: frozenset[str] = frozenset(
+    {"PASS", "FAIL", "NOT_APPLICABLE", "UNVERIFIED", "UNSUPPORTED"}
+)
+
+
+class HistoricalExecutionResult(str, Enum):
+    """Historical-execution dimension of a verification (HEA design §7).
+
+    Independent from reproducibility (MATCH/MISMATCH/CANNOT_REPRODUCE):
+    the two dimensions are never merged into one score.
+    """
+
+    PROVEN = "HISTORICAL_EXECUTION_PROVEN"
+    UNPROVEN = "HISTORICAL_EXECUTION_UNPROVEN"
+    DISPROVEN = "HISTORICAL_EXECUTION_DISPROVEN"
+    NOT_APPLICABLE = "HEA_NOT_APPLICABLE"
+
+
+class HeaReason(str, Enum):
+    """Normative reason codes for HISTORICAL_EXECUTION_UNPROVEN (§7.3).
+
+    Every UNPROVEN verdict carries exactly one code; there is no silent UNPROVEN.
+    """
+
+    NO_ATTESTATION = "NO_ATTESTATION"
+    NO_PREBINDING = "NO_PREBINDING"
+    MALFORMED_ATTESTATION = "MALFORMED_ATTESTATION"
+    SIGNATURE_INVALID = "SIGNATURE_INVALID"
+    SIGNATURE_UNTRUSTED = "SIGNATURE_UNTRUSTED"
+    WITNESS_UNAUTHORIZED = "WITNESS_UNAUTHORIZED"
+    WITNESS_KEY_REVOKED = "WITNESS_KEY_REVOKED"
+    WITNESS_KEY_EXPIRED = "WITNESS_KEY_EXPIRED"
+    BUNDLE_DIGEST_MISMATCH = "BUNDLE_DIGEST_MISMATCH"
+    PROFILE_DIGEST_MISMATCH = "PROFILE_DIGEST_MISMATCH"
+    CODE_DIGEST_MISMATCH = "CODE_DIGEST_MISMATCH"
+    LOG_ANCHOR_INVALID = "LOG_ANCHOR_INVALID"
+    LOG_GAP = "LOG_GAP"
+    MISSING_EXECUTION_STEP = "MISSING_EXECUTION_STEP"
+    RESULT_CONFLICT = "RESULT_CONFLICT"
+    TIMESTAMP_INVALID = "TIMESTAMP_INVALID"
+    UNSUPPORTED_PROTOCOL_VERSION = "UNSUPPORTED_PROTOCOL_VERSION"
 
 
 class OverallResult(str, Enum):
@@ -275,6 +362,13 @@ class VerificationReceipt:
     protocol_version: str = "oev-receipt/0.1"
     superseded_receipt: dict[str, str] | None = None
     receipt_digest: str = ""
+    # HEA binding (oev-attestation/0.1, design §5.2 rule 2): per-check
+    # attestation digests. Each entry is {"check_id": ..., "attestation_digest":
+    # "sha256:<...>"} where attestation_digest is the JCS+SHA-256 digest of the
+    # attestation payload. The field is part of the receipt digest, so it
+    # cannot be added to a receipt after finalisation. Absence means "no
+    # HEA attestation" (NO_ATTESTATION), never "receipt invalid".
+    execution_attestations: list[dict[str, str]] = field(default_factory=list)
 
     def to_dict(self, include_digest: bool = True) -> dict[str, Any]:
         res_val = (
@@ -296,6 +390,8 @@ class VerificationReceipt:
         }
         if self.superseded_receipt:
             d["superseded_receipt"] = dict(self.superseded_receipt)
+        if self.execution_attestations:
+            d["execution_attestations"] = [dict(a) for a in self.execution_attestations]
         if include_digest and self.receipt_digest:
             d["receipt_digest"] = self.receipt_digest
         return d
@@ -328,6 +424,10 @@ class VerificationReceipt:
             if data.get("superseded_receipt")
             else None,
             receipt_digest=str(data.get("receipt_digest", "")),
+            execution_attestations=[
+                {"check_id": str(a["check_id"]), "attestation_digest": str(a["attestation_digest"])}
+                for a in data.get("execution_attestations", [])
+            ],
         )
 
 
@@ -343,6 +443,11 @@ class ReverificationReport:
     reverification_result: str  # MATCH, MISMATCH, CANNOT_REPRODUCE
     protocol_version: str = "oev-reverification/0.1"
     notes: list[str] = field(default_factory=list)
+    # HEA dimension (design §7.4): reported separately from reproducibility,
+    # never merged into one score. Empty string means "not assessed".
+    historical_execution: str = ""
+    historical_execution_reason: str = ""
+    historical_execution_notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -356,4 +461,10 @@ class ReverificationReport:
         }
         if self.notes:
             d["notes"] = list(self.notes)
+        if self.historical_execution:
+            d["historical_execution"] = self.historical_execution
+        if self.historical_execution_reason:
+            d["historical_execution_reason"] = self.historical_execution_reason
+        if self.historical_execution_notes:
+            d["historical_execution_notes"] = list(self.historical_execution_notes)
         return d

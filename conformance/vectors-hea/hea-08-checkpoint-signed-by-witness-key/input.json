@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-08",
+  "scenario": "checkpoint-signed-by-witness-key",
+  "title": "Checkpoint signed with the witness key is UNPROVEN (LOG_ANCHOR_INVALID)",
+  "description": "Role separation: the checkpoint is signed with the witness key instead of the checkpoint-signer key."
+}

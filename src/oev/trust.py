@@ -14,6 +14,7 @@ NON-NEGOTIABLE TRUST INVARIANTS:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -28,14 +29,47 @@ from .signing import (
 MAX_TRUSTED_KEYS: int = 64
 MAX_KEYID_LENGTH: int = 256
 
+#: Roles a trusted key may hold. A key signs only objects of its own role
+#: (HEA design §9.2). ``role`` is optional for backwards compatibility:
+#: a key without a role may sign receipts (the pre-HEA behaviour) but is
+#: never authorised as a witness or checkpoint signer.
+KEY_ROLES: frozenset[str] = frozenset(
+    {"receipt-signer", "witness", "checkpoint-signer", "code-signer"}
+)
+
+#: Strict ISO-8601 UTC form used by ``not_before`` / ``not_after``.
+_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+def parse_hea_timestamp(value: str) -> datetime:
+    """Parse a strict ``YYYY-MM-DDTHH:MM:SSZ`` timestamp (claimed time)."""
+    try:
+        parsed = datetime.strptime(value, _TIMESTAMP_FORMAT)
+    except ValueError as exc:
+        raise ValueError(
+            f"Invalid HEA timestamp (expected YYYY-MM-DDTHH:MM:SSZ): {value!r}"
+        ) from exc
+    return parsed.replace(tzinfo=timezone.utc)
+
 
 @dataclass(frozen=True)
 class TrustedKey:
-    """A caller-supplied trusted public key."""
+    """A caller-supplied trusted public key.
+
+    HEA extension (oev-attestation/0.1): the optional fields carry the key
+    lifecycle. Absence of a field means "unknown", never "unbounded":
+    a witness key MUST carry ``not_after`` (HEA design §9.1); receipt
+    keys keep the fields optional for backwards compatibility.
+    """
 
     key_id: str
     public_key_pem: bytes
     digest: str
+    not_before: str | None = None
+    not_after: str | None = None
+    revoked: bool = False
+    role: str | None = None
+    successor_key_id: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TrustedKey:
@@ -49,7 +83,80 @@ class TrustedKey:
         # Validate that it is a valid Ed25519 public key
         load_ed25519_public_key(pem_bytes)
         digest = sha256_bytes(pem_bytes)
-        return cls(key_id=key_id, public_key_pem=pem_bytes, digest=digest)
+        not_before = data.get("not_before")
+        not_after = data.get("not_after")
+        if not_before is not None:
+            parse_hea_timestamp(str(not_before))
+        if not_after is not None:
+            parse_hea_timestamp(str(not_after))
+        if (
+            not_before is not None
+            and not_after is not None
+            and parse_hea_timestamp(str(not_before)) > parse_hea_timestamp(str(not_after))
+        ):
+            raise ValueError("Trusted key 'not_before' is after 'not_after'")
+        role = data.get("role")
+        if role is not None and str(role) not in KEY_ROLES:
+            raise ValueError(f"Trusted key 'role' is not a known HEA role: {role!r}")
+        successor = data.get("successor_key_id")
+        if successor is not None and (
+            not str(successor).strip() or len(str(successor)) > MAX_KEYID_LENGTH
+        ):
+            raise ValueError("Trusted key 'successor_key_id' is invalid")
+        return cls(
+            key_id=key_id,
+            public_key_pem=pem_bytes,
+            digest=digest,
+            not_before=str(not_before) if not_before is not None else None,
+            not_after=str(not_after) if not_after is not None else None,
+            revoked=bool(data.get("revoked", False)),
+            role=str(role) if role is not None else None,
+            successor_key_id=str(successor) if successor is not None else None,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "key_id": self.key_id,
+            "public_key_pem": self.public_key_pem.decode("utf-8"),
+        }
+        if self.not_before is not None:
+            d["not_before"] = self.not_before
+        if self.not_after is not None:
+            d["not_after"] = self.not_after
+        if self.revoked:
+            d["revoked"] = True
+        if self.role is not None:
+            d["role"] = self.role
+        if self.successor_key_id is not None:
+            d["successor_key_id"] = self.successor_key_id
+        return d
+
+    def key_state_at(self, claimed_time: str) -> str:
+        """Return the key state at a claimed time: ``valid``/``expired``/``not_yet_valid``/``revoked``.
+
+        The time is *claimed* (HEA design §9.4): expiry enforcement is
+        therefore approximate, never a proof of wall-clock validity.
+        Revocation is time-independent: a revoked key is revoked.
+        """
+        if self.revoked:
+            return "revoked"
+        moment = parse_hea_timestamp(claimed_time)
+        if self.not_before is not None and moment < parse_hea_timestamp(self.not_before):
+            return "not_yet_valid"
+        if self.not_after is not None and moment > parse_hea_timestamp(self.not_after):
+            return "expired"
+        return "valid"
+
+    def is_authorized_for(self, required_role: str) -> bool:
+        """Role check (HEA design §9.2).
+
+        A key with no recorded role keeps the pre-HEA behaviour: it may
+        sign receipts only. Witness and checkpoint signing always require
+        an explicit matching role.
+        """
+        if required_role == "receipt-signer":
+            return self.role is None or self.role == "receipt-signer"
+        return self.role == required_role
 
 
 class TrustStore:

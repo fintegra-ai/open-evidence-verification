@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-09",
+  "scenario": "revoked-witness-key",
+  "title": "Revoked witness key is UNPROVEN (WITNESS_KEY_REVOKED)",
+  "description": "A signed revocation list names the witness key 'wit-1' (reason key-compromise). Revocation is retroactive."
+}

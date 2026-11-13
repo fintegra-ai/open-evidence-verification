@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,33 @@ from oev.receipts import aggregate_overall_result, load_receipt, verify_receipt_
 from oev.schemas import validate_document
 
 REVERIFICATION_SCHEMA_NAME = "reverification-report.schema.json"
+
+
+def _apply_hea_assessment(
+    report: ReverificationReport, hea_assessment: dict[str, Any] | None
+) -> ReverificationReport:
+    """Attach the HEA historical-execution dimension (§7.4) to a report.
+
+    The dimension is supplied by the caller (hea_verifier output); reverify
+    never computes it, keeping the two dimensions independent.
+    """
+    if hea_assessment is None:
+        return report
+    result = str(hea_assessment.get("historical_execution", ""))
+    if result not in (
+        "HISTORICAL_EXECUTION_PROVEN",
+        "HISTORICAL_EXECUTION_UNPROVEN",
+        "HISTORICAL_EXECUTION_DISPROVEN",
+    ):
+        raise ValueError(f"Invalid historical_execution value: {result!r}")
+    notes = hea_assessment.get("notes", [])
+    # ReverificationReport is frozen: build a new report (dataclasses.replace).
+    return replace(
+        report,
+        historical_execution=result,
+        historical_execution_reason=str(hea_assessment.get("reason", "")),
+        historical_execution_notes=[str(n) for n in notes] if isinstance(notes, list) else [],
+    )
 
 
 def _extract_receipt(source: str | Path | dict[str, Any]) -> VerificationReceipt:
@@ -51,6 +79,7 @@ def reverify_package(
     receipt_source: str | Path | dict[str, Any],
     profile_source: str | Path | dict[str, Any] | VerificationProfile,
     package_trust_keys: list[dict[str, Any]] | None = None,
+    hea_assessment: dict[str, Any] | None = None,
 ) -> ReverificationReport:
     """Independently re-verify package bytes against a historical verification receipt.
 
@@ -84,6 +113,7 @@ def reverify_package(
             reverification_result="MISMATCH",
             notes=notes,
         )
+        report = _apply_hea_assessment(report, hea_assessment)
         validate_document(report.to_dict(), REVERIFICATION_SCHEMA_NAME)
         return report
 
@@ -106,6 +136,7 @@ def reverify_package(
             reverification_result="MISMATCH",
             notes=notes,
         )
+        report = _apply_hea_assessment(report, hea_assessment)
         validate_document(report.to_dict(), REVERIFICATION_SCHEMA_NAME)
         return report
 
@@ -133,6 +164,7 @@ def reverify_package(
             reverification_result="CANNOT_REPRODUCE",
             notes=notes,
         )
+        report = _apply_hea_assessment(report, hea_assessment)
         validate_document(report.to_dict(), REVERIFICATION_SCHEMA_NAME)
         return report
 
@@ -153,6 +185,7 @@ def reverify_package(
             reverification_result="CANNOT_REPRODUCE",
             notes=notes,
         )
+        report = _apply_hea_assessment(report, hea_assessment)
         validate_document(report.to_dict(), REVERIFICATION_SCHEMA_NAME)
         return report
 
@@ -267,5 +300,6 @@ def reverify_package(
         notes=notes,
     )
 
+    report = _apply_hea_assessment(report, hea_assessment)
     validate_document(report.to_dict(), REVERIFICATION_SCHEMA_NAME)
     return report

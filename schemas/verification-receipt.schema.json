@@ -200,6 +200,25 @@
     "receipt_digest": {
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "execution_attestations": {
+      "type": "array",
+      "description": "HEA binding (oev-attestation/0.1): per-check attestation digests; part of the receipt digest, so it cannot be added after finalisation. Absence means no HEA attestation, never receipt invalidity.",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "attestation_digest"],
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attestation_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false

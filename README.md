@@ -328,6 +328,19 @@ full conformance run).
   procedure (`oev-decision-pack/0.2`).
 - [spec/threat-model.md](spec/threat-model.md) — trust invariants, adversary model,
   threats and mitigations, explicit non-goals.
+- [spec/execution-attestation-spec.md](spec/execution-attestation-spec.md) —
+  Historical Execution Attestation: pre-binding, Execution ID, commitments,
+  per-check attestations (`oev-execution/0.1`, `oev-attestation/0.1`).
+- [spec/execution-log-spec.md](spec/execution-log-spec.md) — hash-chained
+  execution log, Merkle tree, signed checkpoints, completeness and DISPROVEN
+  (`oev-execution-log/0.1`, `oev-log-checkpoint/0.1`).
+- [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) — HEA threat model: Model A
+  limits (same-machine witness, no trusted time, no non-equivocation).
+- [docs/PROTOCOL_SECURITY_REVIEW.md](docs/PROTOCOL_SECURITY_REVIEW.md) —
+  HEA security review: C1–C10 attack taxonomy, provable vs unprovable
+  properties, CheckStatus semantics, recorded deviations from the design.
+- [conformance/vectors-hea/README.md](conformance/vectors-hea/README.md) —
+  HEA conformance vectors hea-01..hea-14 (14/14 pass).
 - [conformance/README.md](conformance/README.md) — the fixture corpus and expected
   results.
 - [SECURITY.md](SECURITY.md) — vulnerability reporting, scope, and the limits of

@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-13",
+  "scenario": "profile-digest-mismatch",
+  "title": "Different profile is UNPROVEN (PROFILE_DIGEST_MISMATCH)",
+  "description": "Verification is run against a profile whose digest differs from the attested profile digest."
+}

@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-04",
+  "scenario": "unknown-witness-key",
+  "title": "Attestation by an unknown key is UNPROVEN (ATTESTATION_UNTRUSTED)",
+  "description": "Attestations re-signed with a fresh key that is in no trust store."
+}
