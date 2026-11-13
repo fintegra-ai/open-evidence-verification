@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-20",
+  "scenario": "not-run-check-needs-no-attestation",
+  "title": "A NOT_RUN check needs no attestation; bundle still PROVEN",
+  "description": "Coverage exclusion guard: a NOT_RUN check never ran, so the H2 coverage check must not demand an attestation for it. Three PASS checks attested, one NOT_RUN unattested, verdict PROVEN."
+}

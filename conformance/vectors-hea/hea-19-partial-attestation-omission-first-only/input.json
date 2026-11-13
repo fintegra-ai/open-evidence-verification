@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-19",
+  "scenario": "partial-attestation-omission-first-only",
+  "title": "Dropping only the first attestation is UNPROVEN (NO_ATTESTATION)",
+  "description": "H2 attestation omission at 1/4 in first position: the coverage check must catch an omission wherever it sits, not only at the tail of the attestation list."
+}

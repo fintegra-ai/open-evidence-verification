@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-"""Drive the HEA conformance vectors (hea-01..hea-17) through the runner."""
+"""Drive the HEA conformance vectors (hea-01..hea-20) through the runner."""
 
 from __future__ import annotations
 
@@ -24,12 +24,12 @@ def _load_runner() -> ModuleType:
     return module
 
 
-def test_hea_vector_manifest_lists_all_seventeen_vectors() -> None:
+def test_hea_vector_manifest_lists_all_twenty_vectors() -> None:
     manifest = json.loads((VECTORS_DIR / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["vector_set"] == "oev-hea-conformance-vectors"
     assert manifest["version"] == "0.1.0"
     ids = [v["id"] for v in manifest["vectors"]]
-    assert ids == [f"hea-{n:02d}" for n in range(1, 18)]
+    assert ids == [f"hea-{n:02d}" for n in range(1, 21)]
     assert all(v["status"] == "active" for v in manifest["vectors"])
     for vector_id in ids:
         input_doc, expected = _load_runner().load_vector(vector_id)
@@ -44,12 +44,12 @@ def test_all_hea_vectors_pass(tmp_path: Path) -> None:
     report = runner.run_all()
     failures = [v for v in report["vectors"] if not v["passed"]]
     assert failures == [], f"failing HEA vectors: {json.dumps(failures, indent=2)}"
-    assert report["passed"] == 17
+    assert report["passed"] == 20
     assert report["failed"] == 0
     assert report["skipped"] == []
 
 
-@pytest.mark.parametrize("vector_id", [f"hea-{n:02d}" for n in range(1, 18)])
+@pytest.mark.parametrize("vector_id", [f"hea-{n:02d}" for n in range(1, 21)])
 def test_each_hea_vector_passes(vector_id: str, tmp_path: Path) -> None:
     runner = _load_runner()
     entry = runner.run_vector(vector_id, tmp_path)

@@ -89,6 +89,21 @@
       "id": "hea-17",
       "scenario": "partial-attestation-omission-four-checks",
       "status": "active"
+    },
+    {
+      "id": "hea-18",
+      "scenario": "partial-attestation-omission-three-of-four",
+      "status": "active"
+    },
+    {
+      "id": "hea-19",
+      "scenario": "partial-attestation-omission-first-only",
+      "status": "active"
+    },
+    {
+      "id": "hea-20",
+      "scenario": "not-run-check-needs-no-attestation",
+      "status": "active"
     }
   ]
 }

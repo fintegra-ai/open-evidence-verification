@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-18",
+  "scenario": "partial-attestation-omission-three-of-four",
+  "title": "Dropping 3 of 4 attestations is UNPROVEN (NO_ATTESTATION)",
+  "description": "H2 attestation omission at 3/4: a four-check bundle with only one attestation surviving. Same NO_ATTESTATION verdict as the 1-of-2 and 2-of-4 cases."
+}
