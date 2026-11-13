@@ -6,7 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [Unreleased]
+## [0.3.0] — 2026-11-13
+
+**Why 0.3.0, not 0.2.4 (round-3 draft):** the pin-less replay refusal documented below under "Changed" is a backwards-incompatible behaviour change (callers relying on unpinned `REPLAY_OK` now get `PINLESS_REPLAY_REFUSED`). This project versions pre-1.0 `0.x.y` with breaking changes landing in minor releases (see OEPT `CHANGELOG.md`: "breaking changes may land in minor releases until 1.0"), so this OEVP release is a **minor** bump. Everything else in this entry is additive (new opt-in layers) or fixes. OEPT stays 0.1.4 (patch: additive + fixes only).
 
 ### Added
 
@@ -31,33 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only; a bundle cannot bind its own execution — see
   `spec/OEPT-1.0-draft.md` §2 rule 7).
 
-### Security
-
-- Committed OEPT conformance test-only key is refused as a witness key
-  at three layers (witness construction, attestation signing,
-  verifier-side blocklist).
-- HEA verifier imports only protocol-core modules (no engine, adapter,
-  replay, CLI, or witness code); enforced by
-  `tests/test_hea_verifier_independence.py`.
-
-### Planned for 0.3.0 — DRAFT (not released; version fields still 0.2.3)
-
-> Draft entry prepared 2026-11-13 (worker E, round 3 P4; version number
-> revised 2026-11-13, round 4 P5). The version bump itself is a separate,
-> Enes-gated step — see `docs/BRANCH_AND_COMMIT_PLAN_V4.md` (commit
-> OEVP-12). Do not publish from this entry alone.
->
-> **Why 0.3.0, not 0.2.4 (round-3 draft):** the pin-less replay refusal
-> documented below under "Changed" is a backwards-incompatible behaviour
-> change (callers relying on unpinned `REPLAY_OK` now get
-> `PINLESS_REPLAY_REFUSED`). This project versions pre-1.0 `0.x.y` with
-> breaking changes landing in minor releases (see OEPT `CHANGELOG.md`:
-> "breaking changes may land in minor releases until 1.0"), so the next
-> OEVP release is a **minor** bump. Everything else in this entry is
-> additive (new opt-in layers) or fixes. OEPT stays 0.1.4 (patch:
-> additive + fixes only).
-
-#### Added (round 4, Tur 4)
+**Round 4 (Tur 4):**
 
 - Receipt freshness layer (`oev.receipt_status`, schema
   `oev-receipt-status/0.1`): signed status snapshots (CURRENT / STALE /
@@ -94,20 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   0.2.3 verify/re-verify bundles and receipts produced by this tree
   (`VALID_SIGNED` / `MATCH`) and vice versa.
 
-#### Fixed (round 4, Tur 4)
-
-- mypy: 7 errors in the round-4 B2 files (`b2_keystore.py`,
-  `b2_mtls.py`) fixed by type narrowing (rotation-record `None` guard,
-  RSA-only test-CA key check, `getpeercert()` `None` guards, one
-  removed unused `type: ignore`). `mypy src/oev` is clean again
-  (50 files).
-- Bandit B310: `request_timestamp` now refuses non-HTTP(S) TSA URLs
-  (`file:` etc.) before `urlopen`; the audited call site carries a
-  `nosec B310` with the justification. Bandit: 0 Medium / 0 High
-  (18 Low, all false-positive class: enum-string B105, asserts,
-  fixed-argv subprocess).
-
-#### Added
+**Round 3:**
 
 - H2 attestation-omission coverage expanded: HEA vectors hea-18 (omit 3
   of 4), hea-19 (omit first only), hea-20 (NOT_RUN needs no attestation);
@@ -137,7 +100,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dispatched by the OEPT adapter; the three profiles are registered as
   **draft** (#6–8) pending a governance decision on adapter-level engines.
 
-#### Fixed
+### Fixed
+
+**Round 4 (Tur 4):**
+
+- mypy: 7 errors in the round-4 B2 files (`b2_keystore.py`,
+  `b2_mtls.py`) fixed by type narrowing (rotation-record `None` guard,
+  RSA-only test-CA key check, `getpeercert()` `None` guards, one
+  removed unused `type: ignore`). `mypy src/oev` is clean again
+  (50 files).
+- Bandit B310: `request_timestamp` now refuses non-HTTP(S) TSA URLs
+  (`file:` etc.) before `urlopen`; the audited call site carries a
+  `nosec B310` with the justification. Bandit: 0 Medium / 0 High
+  (18 Low, all false-positive class: enum-string B105, asserts,
+  fixed-argv subprocess).
+
+**Round 3:**
 
 - Unsigned-K4 int-range gap: the `|n| ≤ 2**53−1` check now runs on the
   unsigned path too (reference + Node verifiers); K4 probe 11/11.
@@ -147,7 +125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`HISTORICAL_EXECUTION_UNPROVEN / MALFORMED_ATTESTATION`). Backdating
   (a well-formed false time) is still not prevented — TSA is v0.2 work.
 
-#### Changed
+### Changed
 
 - Pin-less replay is now refused by default: `replay_snapshot` returns
   `PINLESS_REPLAY_REFUSED` (CLI exit 2) when no pin and no trust roots
@@ -157,6 +135,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with a pin 60/60 `PACK_HASH_CHANGED`, without a pin 0/60 under the old
   default. Spec updated: `spec/threat-model.md`,
   `spec/decision-pack-spec.md` §8.
+
+### Security
+
+- Committed OEPT conformance test-only key is refused as a witness key
+  at three layers (witness construction, attestation signing,
+  verifier-side blocklist).
+- HEA verifier imports only protocol-core modules (no engine, adapter,
+  replay, CLI, or witness code); enforced by
+  `tests/test_hea_verifier_independence.py`.
 
 ## [0.2.3] — 2026-11-02
 
