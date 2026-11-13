@@ -36,6 +36,7 @@ from .attestation import (
     parse_attestation_envelope,
     validate_attestation_payload,
 )
+from .code_digest import compare_code_digest_document
 from .dsse import DsseError, parse_dsse_envelope
 from .execution import (
     compute_execution_id,
@@ -64,6 +65,10 @@ from .receipts import verify_receipt_digest
 from .revocation import RevocationList
 from .signing import verify_dsse_signature_with_key
 from .trust import TrustStore
+from .witness_authorization import (
+    check_witness_authorization,
+    load_witness_authorization_document,
+)
 
 MAX_ATTESTATIONS: int = 1024
 
@@ -87,6 +92,18 @@ class HeaVerificationInputs:
     revocation_list: RevocationList | None = None
     expected_code_digest: str | None = None
     witness_authorization: dict[str, dict[str, list[str]]] | None = None
+    # Round 3 (P0): schema-bound authorisation + code-digest documents.
+    # ``witness_authorization_document`` is one
+    # oev-witness-authorization/0.1 document; when it is supplied it
+    # replaces the legacy dict for every attestation. When
+    # ``require_witness_authorization`` is set, a missing authorisation
+    # (document or legacy dict) fails closed as WITNESS_UNAUTHORIZED
+    # instead of silently skipping the check. ``expected_code_digest_document``
+    # is one oev-code-digest/0.1 document; when supplied, the attested
+    # code_version is compared against it field by field.
+    witness_authorization_document: dict[str, Any] | None = None
+    require_witness_authorization: bool = False
+    expected_code_digest_document: dict[str, Any] | None = None
     reverification_result: str | None = None
     # DISPROVEN inputs (design §7.2): only consulted when no attestation
     # exists for the execution.
@@ -259,10 +276,14 @@ def verify_historical_execution(inputs: HeaVerificationInputs) -> HeaVerificatio
         notes.append(
             "No revocation list supplied; revocation status unknown (fail-explicit, §9.1)."
         )
-    if inputs.expected_code_digest is None:
+    if inputs.expected_code_digest is None and inputs.expected_code_digest_document is None:
         notes.append("No expected code digest supplied; code identity not independently checked.")
-    if inputs.witness_authorization is None:
-        notes.append("No witness authorisation supplied; authorisation not checked.")
+    if inputs.witness_authorization is None and inputs.witness_authorization_document is None:
+        notes.append(
+            "No witness authorisation supplied; authorisation not checked. "
+            "Security-critical callers must supply an oev-witness-authorization/0.1 "
+            "document and set require_witness_authorization."
+        )
 
     per_check: list[dict[str, Any]] = []
     for check in receipt.checks:
@@ -456,6 +477,13 @@ def verify_historical_execution(inputs: HeaVerificationInputs) -> HeaVerificatio
         for p in parsed_attestations
     ):
         return _fail("CODE_DIGEST_MISMATCH", "Attestations disagree on code_digest.")
+    # Round 3 (P0): the whole attested code record — policy, dependencies,
+    # environment included — must agree across attestations of one execution.
+    if any(
+        dict(p["code_version"]) != dict(parsed_attestations[0]["code_version"])
+        for p in parsed_attestations
+    ):
+        return _fail("CODE_DIGEST_MISMATCH", "Attestations disagree on code_version.")
     if str(commitment.code_version.get("code_digest", "")) != attestation_code_digest:
         return _fail(
             "CODE_DIGEST_MISMATCH", "Commitment code_digest disagrees with the attestations."
@@ -468,7 +496,52 @@ def verify_historical_execution(inputs: HeaVerificationInputs) -> HeaVerificatio
             "CODE_DIGEST_MISMATCH",
             f"Attested code digest {attestation_code_digest} != expected {inputs.expected_code_digest}.",
         )
+    # ---- Step 3b: schema-bound code-digest document (round 3, P0) --------
+    # When the caller supplies an oev-code-digest/0.1 document, the
+    # attested code_version is compared field by field: code_digest,
+    # policy_digest, pinned dependencies, python_version and (when both
+    # sides record one) venv_fingerprint must match; platform/os
+    # differences are notes, not failures.
+    if inputs.expected_code_digest_document is not None:
+        try:
+            mismatches, digest_notes = compare_code_digest_document(
+                inputs.expected_code_digest_document,
+                dict(parsed_attestations[0]["code_version"]),
+            )
+        except ValueError as exc:
+            return _fail(
+                "CODE_DIGEST_MISMATCH",
+                f"Expected code-digest document is invalid: {exc}",
+            )
+        notes.extend(digest_notes)
+        if mismatches:
+            return _fail(
+                "CODE_DIGEST_MISMATCH",
+                "Attested code does not match the expected code-digest document: "
+                + " ".join(mismatches),
+            )
+
     # ---- Step 4: witness signatures ---------------------------------------
+    # Round 3 (P0): a schema-bound authorisation document, when supplied,
+    # replaces the legacy dict; a missing authorisation fails closed only
+    # when require_witness_authorization is set (v0.1 keeps the check
+    # optional for backwards compatibility, and says so in the notes).
+    auth_document = None
+    if inputs.witness_authorization_document is not None:
+        try:
+            auth_document = load_witness_authorization_document(
+                inputs.witness_authorization_document
+            )
+        except ValueError as exc:
+            return _fail(
+                "WITNESS_UNAUTHORIZED",
+                f"Witness authorisation document is invalid: {exc}",
+            )
+    elif inputs.witness_authorization is None and inputs.require_witness_authorization:
+        return _fail(
+            "WITNESS_UNAUTHORIZED",
+            "Witness authorisation is required but none was supplied.",
+        )
     for payload, envelope in zip(parsed_attestations, inputs.attestations):
         _payload, evaluation = evaluate_attestation_signature(
             envelope, inputs.witness_trust_store, inputs.revocation_list
@@ -479,7 +552,23 @@ def verify_historical_execution(inputs: HeaVerificationInputs) -> HeaVerificatio
                 f"Attestation for check {payload['check_id']!r} failed signature "
                 f"verification: {evaluation.reason}.",
             )
-        if inputs.witness_authorization is not None:
+        if auth_document is not None:
+            try:
+                auth_note = check_witness_authorization(
+                    auth_document,
+                    key_id=evaluation.trusted_key_id or "",
+                    profile_id=profile.profile_id,
+                    check_id=str(payload["check_id"]),
+                    claimed_time=str(payload["claimed_time"]),
+                )
+            except ValueError as exc:
+                return _fail(
+                    "WITNESS_UNAUTHORIZED",
+                    f"Authorisation check failed: {exc}",
+                )
+            if auth_note:
+                return _fail("WITNESS_UNAUTHORIZED", auth_note)
+        elif inputs.witness_authorization is not None:
             auth = inputs.witness_authorization.get(evaluation.trusted_key_id or "")
             if auth is None:
                 return _fail(

@@ -273,3 +273,35 @@ def compute_code_digest(package_dir: str | Path | None = None) -> str:
     return sha256_bytes(canonicalize_json(record))
 
 
+def build_code_version(
+    engine: str,
+    adapter: str,
+    package_dir: str | Path | None = None,
+    *,
+    policy_digest: str | None = None,
+    dependencies: list[dict[str, Any]] | None = None,
+    include_environment: bool = False,
+) -> dict[str, Any]:
+    """Build the human-readable + digest ``code_version`` record for pre-binding.
+
+    Round 3 (P0): producers may additionally record ``policy_digest``,
+    ``dependencies`` and the ``environment`` record (see
+    ``oev.code_digest``). They are optional and off by default, so
+    existing callers keep the exact ``{engine, adapter, code_digest}``
+    record; the verifier compares the extra fields only when the caller
+    supplies an expected code-digest document.
+    """
+    record: dict[str, Any] = {
+        "engine": engine,
+        "adapter": adapter,
+        "code_digest": compute_code_digest(package_dir),
+    }
+    if policy_digest is not None:
+        record["policy_digest"] = policy_digest
+    if dependencies is not None:
+        record["dependencies"] = [dict(d) for d in dependencies]
+    if include_environment:
+        from .code_digest import build_environment_record
+
+        record["environment"] = build_environment_record()
+    return record

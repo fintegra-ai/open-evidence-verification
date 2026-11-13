@@ -623,6 +623,20 @@ def cmd_hea_verify(args: argparse.Namespace) -> int:
             sys.stderr.write(f"Error: {exc}\n")
             return 1
 
+    witness_authorization_document: dict[str, Any] | None = None
+    if getattr(args, "witness_authorization", None):
+        try:
+            witness_authorization_document = _load_json_file(Path(args.witness_authorization))
+        except (ValueError, TypeError, OSError) as exc:
+            sys.stderr.write(f"Error: failed to load witness authorisation: {exc}\n")
+            return 1
+    expected_code_digest_document: dict[str, Any] | None = None
+    if getattr(args, "code_digest_document", None):
+        try:
+            expected_code_digest_document = _load_json_file(Path(args.code_digest_document))
+        except (ValueError, TypeError, OSError) as exc:
+            sys.stderr.write(f"Error: failed to load code-digest document: {exc}\n")
+            return 1
 
     result = verify_historical_execution(
         HeaVerificationInputs(
@@ -639,6 +653,11 @@ def cmd_hea_verify(args: argparse.Namespace) -> int:
             checkpoint_trust_store=checkpoint_store,
             revocation_list=revocation_list,
             expected_code_digest=expected_code_digest,
+            witness_authorization_document=witness_authorization_document,
+            require_witness_authorization=bool(
+                getattr(args, "require_witness_authorization", False)
+            ),
+            expected_code_digest_document=expected_code_digest_document,
             reverification_result=reverification_result,
         )
     )
@@ -992,6 +1011,23 @@ def build_parser() -> argparse.ArgumentParser:
         "--revocation-keys", help="Path to trusted revocation-authority keys JSON"
     )
     p_hea_verify.add_argument("--code-digest", help="Expected code digest ('sha256:<hex>')")
+    p_hea_verify.add_argument(
+        "--code-digest-document",
+        help="Path to an oev-code-digest/0.1 JSON document: the attested "
+        "code_version is compared against it field by field (code digest, "
+        "policy digest, pinned dependencies, interpreter, venv fingerprint)",
+    )
+    p_hea_verify.add_argument(
+        "--witness-authorization",
+        help="Path to an oev-witness-authorization/0.1 JSON document: the "
+        "witness key, profiles, checks and validity window are enforced",
+    )
+    p_hea_verify.add_argument(
+        "--require-witness-authorization",
+        action="store_true",
+        help="Fail closed (WITNESS_UNAUTHORIZED) when no witness authorisation "
+        "is supplied; without it, a missing authorisation is only noted",
+    )
     p_hea_verify.add_argument(
         "--trust-keys", help="Path to package trust roots JSON (for --reverify)"
     )
