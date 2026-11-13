@@ -25,6 +25,81 @@ from tests.hea_helpers import (
     make_profile,
 )
 
+# --- H2 attestation-omission coverage (HEA §3.1 "one attestation per check") ---
+# A dropped attestation used to be invisible: the verifier looped over the
+# *supplied* attestations only, the log still held every CHECK_COMPLETED
+# event, and the result stayed HISTORICAL_EXECUTION_PROVEN. The verifier
+# now fails closed with NO_ATTESTATION whenever an executed receipt check
+# has no supplied attestation.
+
+FOUR_CHECKS = ["check_a", "check_b", "check_c", "check_d"]
+
+
+def _build_four_check_bundle(tmp_path: Path) -> dict[str, Any]:
+    checks = [
+        CheckResult(check_id=c, category="safety", status=CheckStatus.PASS) for c in FOUR_CHECKS
+    ]
+    return build_valid_hea(tmp_path, checks=checks, profile=make_profile(required=FOUR_CHECKS))
+
+
+@pytest.mark.parametrize("dropped", [1, 2, 3])
+def test_partial_attestation_omission_is_unproven(tmp_path: Path, dropped: int) -> None:
+    bundle = _build_four_check_bundle(tmp_path)
+    kept = bundle["attestation_envelopes"][: 4 - dropped]
+    result = verify_historical_execution(hea_inputs(bundle, attestations=kept))
+    assert result.historical_execution == "HISTORICAL_EXECUTION_UNPROVEN"
+    assert result.reason == "NO_ATTESTATION"
+    # The note names exactly the checks whose attestations were dropped.
+    notes_text = " ".join(result.notes)
+    assert all(cid in notes_text for cid in FOUR_CHECKS[4 - dropped :])
+    assert all(cid not in notes_text for cid in FOUR_CHECKS[: 4 - dropped])
+
+
+def test_all_four_attestations_dropped_is_no_attestation(tmp_path: Path) -> None:
+    # 4/4 dropped reaches the Step-0 empty-list path; same reason code as
+    # partial omission, so callers need not distinguish the two shapes.
+    bundle = _build_four_check_bundle(tmp_path)
+    result = verify_historical_execution(hea_inputs(bundle, attestations=[]))
+    assert result.historical_execution == "HISTORICAL_EXECUTION_UNPROVEN"
+    assert result.reason == "NO_ATTESTATION"
+
+
+def test_full_four_check_attestation_set_is_proven(tmp_path: Path) -> None:
+    bundle = _build_four_check_bundle(tmp_path)
+    result = verify_historical_execution(hea_inputs(bundle))
+    assert result.historical_execution == "HISTORICAL_EXECUTION_PROVEN"
+    assert result.reason == ""
+    assert [e["check_id"] for e in result.per_check] == FOUR_CHECKS
+    assert all(e["hea_result"] == "HISTORICAL_EXECUTION_PROVEN" for e in result.per_check)
+
+
+def test_not_run_check_needs_no_attestation(tmp_path: Path) -> None:
+    # NOT_RUN never ran: no log event, no attestation — and the coverage
+    # check must not demand one. The NOT_RUN entry stays HEA_NOT_APPLICABLE.
+    checks = [
+        CheckResult(check_id="archive_safety", category="safety", status=CheckStatus.PASS),
+        CheckResult(check_id="manifest_structure", category="structure", status=CheckStatus.PASS),
+        CheckResult(check_id="skipped_check", category="safety", status=CheckStatus.NOT_RUN),
+    ]
+    bundle = build_valid_hea(
+        tmp_path,
+        checks=checks,
+        profile=make_profile(required=["archive_safety", "manifest_structure", "skipped_check"]),
+    )
+    assert len(bundle["attestation_envelopes"]) == 2
+    result = verify_historical_execution(hea_inputs(bundle))
+    assert result.historical_execution == "HISTORICAL_EXECUTION_PROVEN"
+    not_run = [e for e in result.per_check if e["check_id"] == "skipped_check"]
+    assert not_run == [
+        {
+            "check_id": "skipped_check",
+            "hea_result": "HEA_NOT_APPLICABLE",
+            "reason": "",
+            "note": "Check never ran; no attestation is expected (HEA_NOT_APPLICABLE).",
+        }
+    ]
+
+
 def test_extra_attestation_for_check_absent_from_receipt(tmp_path: Path) -> None:
     # The receipt drops an executed check (re-finalised, so its digest is
     # valid) while the attestation and the log event for it are still
@@ -42,6 +117,7 @@ def test_extra_attestation_for_check_absent_from_receipt(tmp_path: Path) -> None
     result = verify_historical_execution(hea_inputs(bundle, receipt=receipt))
     assert result.historical_execution == "HISTORICAL_EXECUTION_UNPROVEN"
     assert result.reason == "RESULT_CONFLICT"
+
 
 def test_forged_extra_attestation_is_not_silently_accepted(tmp_path: Path) -> None:
     # An attacker signs an attestation for a check that was never executed
@@ -81,12 +157,14 @@ def test_forged_extra_attestation_is_not_silently_accepted(tmp_path: Path) -> No
     assert result.historical_execution == "HISTORICAL_EXECUTION_UNPROVEN"
     assert result.reason == "LOG_ANCHOR_INVALID"
 
+
 def test_replay_attestation_to_another_package_fails(tmp_path: Path) -> None:
     bundle = build_valid_hea(tmp_path)
     result = verify_historical_execution(
         hea_inputs(bundle, package_bytes=b"a completely different package")
     )
     assert result.reason == "BUNDLE_DIGEST_MISMATCH"
+
 
 def test_fake_pass_receipt_without_witness_is_unproven(tmp_path: Path) -> None:
     # A producer that writes PASS and signs a receipt itself, with no
@@ -96,6 +174,7 @@ def test_fake_pass_receipt_without_witness_is_unproven(tmp_path: Path) -> None:
     assert result.historical_execution == "HISTORICAL_EXECUTION_UNPROVEN"
     assert result.reason == "NO_ATTESTATION"
 
+
 def test_tampered_receipt_fail_to_pass_without_redigest(tmp_path: Path) -> None:
     bundle = build_valid_hea(tmp_path)
     receipt_dict = bundle["receipt"].to_dict(include_digest=True)
@@ -104,6 +183,7 @@ def test_tampered_receipt_fail_to_pass_without_redigest(tmp_path: Path) -> None:
     tampered = VerificationReceipt.from_dict(receipt_dict)
     result = verify_historical_execution(hea_inputs(bundle, receipt=tampered))
     assert result.historical_execution == "HISTORICAL_EXECUTION_UNPROVEN"
+
 
 def test_tampered_receipt_fail_to_pass_with_redigest_conflicts_attestation(tmp_path: Path) -> None:
     # Attacker rewrites the receipt AND recomputes its digest (they hold no
@@ -120,6 +200,7 @@ def test_tampered_receipt_fail_to_pass_with_redigest_conflicts_attestation(tmp_p
     result = verify_historical_execution(hea_inputs(bundle, receipt=receipt))
     assert result.reason == "RESULT_CONFLICT"
 
+
 def test_missing_step_is_detected_not_silently_passed(tmp_path: Path) -> None:
     bundle = build_valid_hea(tmp_path)
     receipt_dict = bundle["receipt"].to_dict(include_digest=False)
@@ -130,12 +211,14 @@ def test_missing_step_is_detected_not_silently_passed(tmp_path: Path) -> None:
     result = verify_historical_execution(hea_inputs(bundle, receipt=receipt))
     assert result.reason == "MISSING_EXECUTION_STEP"
 
+
 def test_different_code_execution_is_detected(tmp_path: Path) -> None:
     bundle = build_valid_hea(tmp_path)
     result = verify_historical_execution(
         hea_inputs(bundle, expected_code_digest="sha256:" + "5" * 64)
     )
     assert result.reason == "CODE_DIGEST_MISMATCH"
+
 
 def test_backdated_claimed_time_does_not_change_the_verdict(tmp_path: Path) -> None:
     # hea-10: fake time — the whole bundle is built with claimed_time a year
@@ -151,6 +234,7 @@ def test_backdated_claimed_time_does_not_change_the_verdict(tmp_path: Path) -> N
     result = verify_historical_execution(hea_inputs(bundle))
     assert result.historical_execution == "HISTORICAL_EXECUTION_PROVEN"
     assert result.time_not_proven is True
+
 
 def test_rewritten_attestation_breaks_receipt_binding(tmp_path: Path) -> None:
     # Re-signing an attestation (e.g. with a different claimed_time) after
@@ -188,6 +272,7 @@ def test_rewritten_attestation_breaks_receipt_binding(tmp_path: Path) -> None:
     assert result.historical_execution == "HISTORICAL_EXECUTION_UNPROVEN"
     assert result.reason in ("RESULT_CONFLICT", "WITNESS_UNAUTHORIZED")
 
+
 def test_witness_compromise_after_revocation_is_rejected(tmp_path: Path) -> None:
     bundle = build_valid_hea(tmp_path)
     revocation = RevocationList(
@@ -202,12 +287,14 @@ def test_witness_compromise_after_revocation_is_rejected(tmp_path: Path) -> None
     result = verify_historical_execution(hea_inputs(bundle, revocation_list=revocation))
     assert result.reason == "WITNESS_KEY_REVOKED"
 
+
 def test_log_middle_deletion_is_detected(tmp_path: Path) -> None:
     bundle = build_valid_hea(tmp_path)
     events = list(bundle["log_events"])
     del events[1]
     result = verify_historical_execution(hea_inputs(bundle, log_events=events))
     assert result.reason in ("LOG_GAP", "LOG_ANCHOR_INVALID")
+
 
 def test_log_fork_same_seq_different_leaf_is_detected(tmp_path: Path) -> None:
     # Attacker rewrites one event's content but keeps seq numbers: the
@@ -230,6 +317,7 @@ def test_log_fork_same_seq_different_leaf_is_detected(tmp_path: Path) -> None:
     result = verify_historical_execution(hea_inputs(bundle, log_events=events))
     assert result.reason in ("LOG_ANCHOR_INVALID", "LOG_GAP")
 
+
 def test_profile_selection_manipulation_is_detected(tmp_path: Path) -> None:
     # Attacker swaps the profile file for a laxer one with the same id:
     # the profile digest no longer matches receipt + attestation.
@@ -247,6 +335,7 @@ def test_profile_selection_manipulation_is_detected(tmp_path: Path) -> None:
     result = verify_historical_execution(hea_inputs(bundle, profile=lax))
     assert result.reason == "PROFILE_DIGEST_MISMATCH"
 
+
 def _resign_first_attestation(
     bundle: dict[str, Any], priv: bytes, key_id: str
 ) -> list[dict[str, Any]]:
@@ -257,6 +346,7 @@ def _resign_first_attestation(
     payload["witness"] = dict(payload["witness"])
     payload["witness"]["witness_key_id"] = key_id
     return [sign_attestation_dsse(payload, priv, key_id), bundle["attestation_envelopes"][1]]
+
 
 def test_receipt_key_used_as_witness_is_role_confusion(tmp_path: Path) -> None:
     # The attestation is cryptographically valid under a key the caller
@@ -282,6 +372,7 @@ def test_receipt_key_used_as_witness_is_role_confusion(tmp_path: Path) -> None:
     )
     assert result.reason == "WITNESS_UNAUTHORIZED"
 
+
 def test_checkpoint_key_used_as_witness_is_rejected(tmp_path: Path) -> None:
     # Same role confusion, with the checkpoint-signer key instead.
     from oev.trust import TrustStore
@@ -306,6 +397,7 @@ def test_checkpoint_key_used_as_witness_is_rejected(tmp_path: Path) -> None:
         hea_inputs(bundle, attestations=envelopes, witness_trust_store=store)
     )
     assert result.reason == "WITNESS_UNAUTHORIZED"
+
 
 def test_equivocation_two_results_same_check(tmp_path: Path) -> None:
     # Same execution, same check, two different signed results submitted
@@ -341,6 +433,7 @@ def test_equivocation_two_results_same_check(tmp_path: Path) -> None:
     result = verify_historical_execution(hea_inputs(bundle, attestations=envelopes))
     assert result.reason == "RESULT_CONFLICT"
 
+
 def test_commitment_signed_by_non_witness_key_rejected(tmp_path: Path) -> None:
     from oev.execution import build_commitment_envelope, compute_execution_id
 
@@ -356,12 +449,14 @@ def test_commitment_signed_by_non_witness_key_rejected(tmp_path: Path) -> None:
     result = verify_historical_execution(hea_inputs(bundle, commitment_envelope=envelope))
     assert result.reason in ("WITNESS_UNAUTHORIZED", "SIGNATURE_UNTRUSTED", "SIGNATURE_INVALID")
 
+
 def test_receipt_digest_binding_survives_json_roundtrip(tmp_path: Path) -> None:
     bundle = build_valid_hea(tmp_path)
     receipt_json = json.loads(canonicalize_json(bundle["receipt"].to_dict()).decode())
     receipt = VerificationReceipt.from_dict(receipt_json)
     result = verify_historical_execution(hea_inputs(bundle, receipt=receipt))
     assert result.historical_execution == "HISTORICAL_EXECUTION_PROVEN"
+
 
 def test_log_anchor_pointing_at_wrong_leaf_rejected(tmp_path: Path) -> None:
     bundle = build_valid_hea(tmp_path)
@@ -393,6 +488,7 @@ def test_log_anchor_pointing_at_wrong_leaf_rejected(tmp_path: Path) -> None:
     # The witness itself refuses: its log says leaf 2 is not this check.
     with pytest.raises(ValueError, match="log_anchor"):
         service.attest(payload)
+
 
 def test_overall_failed_execution_is_proven_not_hidden(tmp_path: Path) -> None:
     checks = [

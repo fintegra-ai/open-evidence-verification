@@ -127,3 +127,8 @@ Conformance is defined by the OEVP conformance vector set
 `conformance/run_vectors.py`. A conformance claim MUST reference a passing
 machine-readable report for a named vector-set version. Claims are governed
 by GOVERNANCE.md. [test: `test_conformance_vectors.py`]
+
+Historical Execution Attestation has its own vector set
+(`conformance/vectors-hea/`, hea-01..hea-17, set version in its
+`manifest.json`) executed via `conformance/run_hea_vectors.py`.
+[test: `test_hea_vectors.py`]

@@ -624,6 +624,31 @@ def verify_historical_execution(inputs: HeaVerificationInputs) -> HeaVerificatio
     # ---- Step 6: result comparison ----------------------------------------
     receipt_by_id = {c.check_id: c for c in receipt.checks}
     attestation_by_id = {str(p["check_id"]): p for p in parsed_attestations}
+    # H2 coverage (design §3.1 "one attestation per check", §7.3
+    # NO_ATTESTATION): every check the receipt records as executed must
+    # have a supplied attestation. The loop below is supplied-driven, so
+    # without this check a dropped attestation is invisible: the log
+    # still contains every CHECK_COMPLETED event and the remaining
+    # attestations still verify. NOT_RUN checks never ran, so no
+    # attestation is expected for them (HEA_NOT_APPLICABLE, set above);
+    # pre-HEA receipts with no attestations at all are already handled
+    # by Step 0. Placed here (after Step 5) deliberately, so the existing
+    # reason precedence is preserved: a receipt check with no log event
+    # still reports MISSING_EXECUTION_STEP, and signature / commitment /
+    # log failures still report before a coverage failure.
+    executed_check_ids = {
+        c.check_id
+        for c in receipt.checks
+        if str(c.status.value if isinstance(c.status, CheckStatus) else c.status)
+        in CHECK_STATUS_EXECUTED
+    }
+    missing_attestations = sorted(executed_check_ids - set(attestation_by_id))
+    if missing_attestations:
+        return _fail(
+            "NO_ATTESTATION",
+            f"Executed checks have no supplied attestation: {missing_attestations}. "
+            "A partial attestation set cannot prove the execution.",
+        )
     for check_id, payload in attestation_by_id.items():
         recorded = receipt_by_id.get(check_id)
         if recorded is None:

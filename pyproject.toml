@@ -43,6 +43,7 @@ oept = [
 ]
 dev = [
     "pytest>=7.4.0",
+    "hypothesis>=6.0.0",
     "ruff>=0.1.0",
     "mypy>=1.6.0",
     "build>=1.0.0",

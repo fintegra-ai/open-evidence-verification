@@ -74,6 +74,21 @@
       "id": "hea-14",
       "scenario": "disprove-never-executed",
       "status": "active"
+    },
+    {
+      "id": "hea-15",
+      "scenario": "partial-attestation-omission",
+      "status": "active"
+    },
+    {
+      "id": "hea-16",
+      "scenario": "extra-attestation",
+      "status": "active"
+    },
+    {
+      "id": "hea-17",
+      "scenario": "partial-attestation-omission-four-checks",
+      "status": "active"
     }
   ]
 }

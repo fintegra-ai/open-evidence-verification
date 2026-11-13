@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-16",
+  "scenario": "extra-attestation",
+  "title": "Attestation for a check the receipt does not record is UNPROVEN (RESULT_CONFLICT)",
+  "description": "The receipt drops an executed check (re-finalised, valid digest) while its attestation and log event are still supplied. The extra attestation must not be silently swallowed."
+}

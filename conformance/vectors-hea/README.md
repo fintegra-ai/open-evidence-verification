@@ -1,4 +1,4 @@
-# HEA conformance vectors (hea-01..hea-14)
+# HEA conformance vectors (hea-01..hea-17)
 
 Outcome-based conformance vectors for Historical Execution Attestation
 (v0.1 Model A). Each vector is a scenario description plus the expected
@@ -9,7 +9,7 @@ the scenario's single mutation, so no secret key material is committed.
 Run them:
 
 ```sh
-python conformance/run_hea_vectors.py run          # 14/14 expected
+python conformance/run_hea_vectors.py run          # 17/17 expected
 python conformance/run_hea_vectors.py run --vector hea-03
 pytest tests/test_hea_vectors.py -q
 ```
@@ -30,6 +30,9 @@ pytest tests/test_hea_vectors.py -q
 | hea-12 | bundle-digest-mismatch | UNPROVEN / BUNDLE_DIGEST_MISMATCH |
 | hea-13 | profile-digest-mismatch | UNPROVEN / PROFILE_DIGEST_MISMATCH |
 | hea-14 | disprove-never-executed | HISTORICAL_EXECUTION_DISPROVEN |
+| hea-15 | partial-attestation-omission | UNPROVEN / NO_ATTESTATION |
+| hea-16 | extra-attestation | UNPROVEN / RESULT_CONFLICT |
+| hea-17 | partial-attestation-omission-four-checks | UNPROVEN / NO_ATTESTATION |
 
 Notes:
 

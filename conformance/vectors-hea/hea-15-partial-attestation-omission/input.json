@@ -1,0 +1,6 @@
+{
+  "vector_id": "hea-15",
+  "scenario": "partial-attestation-omission",
+  "title": "Dropping 1 of 2 attestations is UNPROVEN (NO_ATTESTATION)",
+  "description": "H2 attestation omission: one executed check has no supplied attestation. The log still holds every CHECK_COMPLETED event, so only the attestation-coverage check catches it."
+}
