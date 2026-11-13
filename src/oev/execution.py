@@ -34,6 +34,7 @@ from .dsse import DsseError, build_dsse_envelope, parse_dsse_envelope
 from .hashing import is_valid_digest, sha256_bytes
 from .schemas import validate_document
 from .signing import load_ed25519_private_key
+from .trust import parse_hea_timestamp
 
 EXECUTION_PROTOCOL_VERSION = "oev-execution/0.1"
 COMMITMENT_PAYLOAD_TYPE = "application/vnd.oev.execution-commitment+json"
@@ -210,6 +211,10 @@ def build_commitment_envelope(
     )
     payload = commitment.to_dict()
     validate_document(payload, COMMITMENT_SCHEMA_NAME)
+    # Semantic timestamp check (round 3, P0): the schema pattern rejects
+    # the wrong shape; this rejects impossible dates the pattern cannot
+    # see. A commitment must never be signed with a malformed issue time.
+    parse_hea_timestamp(issued_at_claimed)
     payload_bytes = canonicalize_json(payload)
     private_key = load_ed25519_private_key(private_key_pem)
     raw_sig = private_key.sign(compute_pae(COMMITMENT_PAYLOAD_TYPE, payload_bytes))
@@ -237,6 +242,10 @@ def parse_commitment_envelope(envelope: dict[str, Any]) -> ExecutionCommitment:
         raise DsseError("Commitment payload is not a JSON object")
     validate_document(data, COMMITMENT_SCHEMA_NAME)
     commitment = ExecutionCommitment.from_dict(data)
+    # Semantic timestamp check (round 3, P0): a malformed
+    # ``issued_at_claimed`` previously crashed the verifier in
+    # ``key_state_at``; fail here as a controlled ValueError instead.
+    parse_hea_timestamp(commitment.issued_at_claimed)
     return commitment
 
 

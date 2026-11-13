@@ -45,7 +45,7 @@ from .hashing import is_valid_digest, sha256_bytes
 from .revocation import RevocationList
 from .schemas import validate_document
 from .signing import load_ed25519_private_key, load_ed25519_public_key
-from .trust import TrustStore
+from .trust import TrustStore, parse_hea_timestamp
 
 ATTESTATION_PROTOCOL_VERSION = "oev-attestation/0.1"
 ATTESTATION_PAYLOAD_TYPE = "application/vnd.oev.execution-attestation+json"
@@ -207,6 +207,17 @@ def validate_attestation_payload(payload: dict[str, Any]) -> None:
         # error, not a witnessable outcome; the witness must not attest it
         # as a completed result. (NOT_RUN inside INTERRUPTED is legitimate.)
         raise ValueError("NOT_RUN result requires execution_status INTERRUPTED")
+    # Claimed time is self-asserted, but it must at least be a well-formed
+    # strict UTC timestamp (round 3, P0): key-expiry evaluation
+    # (``key_state_at``) parses it, and a malformed value previously
+    # crashed the verifier with an uncaught ValueError instead of
+    # returning a controlled UNPROVEN verdict. The JSON Schema pattern
+    # rejects the wrong shape; this rejects impossible dates (Feb 30)
+    # and out-of-range fields (hour 99) the pattern cannot see.
+    try:
+        parse_hea_timestamp(attestation.claimed_time)
+    except ValueError as exc:
+        raise ValueError(f"Attestation claimed_time is malformed: {exc}") from exc
     expected_id = compute_attestation_id(attestation.execution_id, attestation.check_id)
     if attestation.attestation_id != expected_id:
         raise ValueError(
@@ -261,6 +272,20 @@ def parse_attestation_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise DsseError("Attestation payload is not a JSON object")
     return data
+
+
+def _key_state_at_safe(trusted_key: Any, claimed_time: str) -> str | None:
+    """``key_state_at`` that returns None instead of raising on a malformed time.
+
+    Defence in depth (round 3, P0): ``validate_attestation_payload``
+    already rejects malformed ``claimed_time`` before this point, but a
+    caller that bypasses validation must still get a controlled reason,
+    never an uncaught ``ValueError`` out of the verifier.
+    """
+    try:
+        return str(trusted_key.key_state_at(claimed_time))
+    except ValueError:
+        return None
 
 
 def evaluate_attestation_signature(
@@ -334,7 +359,13 @@ def evaluate_attestation_signature(
             return payload, AttestationSignatureEvaluation(
                 crypto_valid=True, trusted_key_id=trusted_key.key_id, reason="WITNESS_KEY_EXPIRED"
             )
-        state = str(trusted_key.key_state_at(attestation.claimed_time))
+        state = _key_state_at_safe(trusted_key, attestation.claimed_time)
+        if state is None:
+            return payload, AttestationSignatureEvaluation(
+                crypto_valid=True,
+                trusted_key_id=trusted_key.key_id,
+                reason="MALFORMED_ATTESTATION: claimed_time is not a strict UTC timestamp",
+            )
         if state == "expired":
             return payload, AttestationSignatureEvaluation(
                 crypto_valid=True, trusted_key_id=trusted_key.key_id, reason="WITNESS_KEY_EXPIRED"

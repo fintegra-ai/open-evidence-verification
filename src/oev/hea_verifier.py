@@ -175,7 +175,14 @@ def _verify_commitment_signature(
             return "WITNESS_UNAUTHORIZED"
         if trusted_key.not_after is None:
             return "WITNESS_KEY_EXPIRED"
-        state = trusted_key.key_state_at(claimed_time)
+        try:
+            state = trusted_key.key_state_at(claimed_time)
+        except ValueError:
+            # Defence in depth (round 3, P0): parse_commitment_envelope
+            # already rejects a malformed issued_at_claimed, but a caller
+            # that bypasses parsing must still get a controlled reason,
+            # never an uncaught ValueError out of the verifier.
+            return "MALFORMED_ATTESTATION"
         if state == "expired":
             return "WITNESS_KEY_EXPIRED"
         return ""
